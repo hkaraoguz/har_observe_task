@@ -21,8 +21,8 @@ class HARTaskManager():
         self.previoustasktimeslot = -1
         self.add_tasks_srv_name = '/task_executor/add_tasks'
         self.set_exe_stat_srv_name = '/task_executor/set_execution_status'
-        sub = rospy.Subscriber("task_executor/events",self.taskexecutorCB)
-        self.wait_task = create_go_to_waypoint_task(22)
+        #sub = rospy.Subscriber("task_executor/events",self.taskexecutorCB)
+        self.wait_task = create_go_to_waypoint_task('22')
         #self.deep_object_detection_srv_name = 'deep_net/detect_objects'
         try:
             rospy.wait_for_service(self.add_tasks_srv_name,timeout=10)
@@ -43,8 +43,8 @@ class HARTaskManager():
         #print self.sweep_tasks.keys()
 
             #sys.exit(-1)
-    def taskexecutorCB(taskevent):
-        
+    def taskexecutorCB(self,taskevent):
+        i=0
 
     def create_timeslot_array(self):
         self.minutes = [-1]*1440
