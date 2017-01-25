@@ -2,7 +2,7 @@
 from strands_executive_msgs import task_utils
 from strands_executive_msgs.msg import Task, TaskEvent
 import strands_executive_msgs
-from strands_executive_msgs.srv import AddTasks
+from strands_executive_msgs.srv import AddTasks, AddTask
 from find_waypoints import *
 from create_tasks import *
 import rospy
@@ -29,7 +29,7 @@ class HARTaskManager():
         self.wait_task = create_go_to_waypoint_task('22')
         #self.deep_object_detection_srv_name = 'deep_net/detect_objects'
         try:
-            rospy.wait_for_service(self.add_tasks_srv_name,timeout=10)
+            rospy.wait_for_service(self.add_task_srv_name,timeout=10)
         except:
             rospy.logerr("Service not available!!")
             sys.exit(-1)
@@ -49,11 +49,17 @@ class HARTaskManager():
             #sys.exit(-1)
     def taskexecutorCB(self,taskevent):
         #task is not succeeded
-        if taskevent.event > 14 and taskevent.event is not 16:
-            if taskevent.task.id is self.current_task_id:
+        print taskevent.event
+        print taskevent.task.task_id
+        print self.current_task_id
+        if taskevent.event > 11 and taskevent.event is not 16:
+            if taskevent.task.task_id is self.current_task_id:
                 self.should_update_model = 0
-            elif taskevent.task.id is self.current_wait_task_id:
+                self.current_wait_task_id=self.send_task(self.wait_task)
+            elif taskevent.task.task_id is self.current_wait_task_id:
                 self.current_wait_task_id = self.send_task(self.wait_task)
+	if taskevent.event is 16:
+	    self.send_task(self.wait_task)
 
 
 
@@ -63,7 +69,7 @@ class HARTaskManager():
         arange = np.arange(1,10.1,0.25)
         #print arange
         for i in arange:
-            for j in range(-5,5):
+            for j in range(-5,25):
                 #print int((i+8)*60)+j
                 self.minutes[int((i+8)*60)+j] = count
             count+=1
@@ -84,12 +90,14 @@ class HARTaskManager():
 
     def send_task(self,task):
 
-        add_task_srv = rospy.ServiceProxy(self.add_task_srv_name, AddTasks)
+        add_task_srv = rospy.ServiceProxy(self.add_task_srv_name, AddTask)
         task_id = -1
         try:
             # add task to the execution framework
             task_id = add_task_srv(task)
-            return task_id
+            
+            print 'hey', task_id
+            return task_id.task_id
 
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
@@ -126,7 +134,7 @@ if __name__ =="__main__":
             key = keys[taskid]
             rospy.loginfo("Sending task with id %s",key)
             hartask_manager.current_task_id = hartask_manager.send_task(hartask_manager.sweep_tasks[key])
-            hartask_manager.current_wait_task_id = hartask_manager.send_task(hartask_manager.wait_task)
+            #hartask_manager.current_wait_task_id = hartask_manager.send_task(hartask_manager.wait_task)
             #tasks.append(hartask_manager.sweep_tasks[key])
             #tasks.append(hartask_manager.wait_task)
 
