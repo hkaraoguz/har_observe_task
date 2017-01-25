@@ -35,6 +35,10 @@ def create_har_observation_tasks(duration=rospy.Duration(30*60)):
 
 
     return tasks
+def create_go_to_waypoint_task(waypoint):
+     task = Task(start_node_id=waypoint)
+     task.max_duration.secs = int(2 * 60)
+     return task
 
 def create_har_sweep_tasks(roi_db_name,roi_collection_name,roi_config):
     topological_nodes = getNodes()

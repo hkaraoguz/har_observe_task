@@ -12,11 +12,17 @@ import numpy as np
 from random import randint
 
 class HARTaskManager():
+
+
     def __init__(self):
+
         self.minutes=[]
+        self._current_task_ids = []
         self.previoustasktimeslot = -1
         self.add_tasks_srv_name = '/task_executor/add_tasks'
         self.set_exe_stat_srv_name = '/task_executor/set_execution_status'
+        sub = rospy.Subscriber("task_executor/events",self.taskexecutorCB)
+        self.wait_task = create_go_to_waypoint_task(22)
         #self.deep_object_detection_srv_name = 'deep_net/detect_objects'
         try:
             rospy.wait_for_service(self.add_tasks_srv_name,timeout=10)
@@ -37,14 +43,16 @@ class HARTaskManager():
         #print self.sweep_tasks.keys()
 
             #sys.exit(-1)
+    def taskexecutorCB(taskevent):
+        
 
     def create_timeslot_array(self):
         self.minutes = [-1]*1440
         count = 0
-        arange = np.arange(1,10.1,0.5)
+        arange = np.arange(1,10.1,0.25)
         #print arange
         for i in arange:
-            for j in range(-15,15):
+            for j in range(-5,5):
                 #print int((i+8)*60)+j
                 self.minutes[int((i+8)*60)+j] = count
             count+=1
@@ -63,17 +71,19 @@ class HARTaskManager():
         return False
 
 
-    def send_task(self,task):
+    def send_tasks(self,tasks):
 
         add_tasks_srv = rospy.ServiceProxy(self.add_tasks_srv_name, AddTasks)
-
+        task_ids = []
         try:
             # add task to the execution framework
-            task_id = add_tasks_srv([task])
+            task_ids = add_tasks_srv(tasks)
+            return task_ids
 
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
-
+            return task_ids
+    '''
     def send_tasks(self, roi_db_name,roi_collection_name,roi_config):
         tasks = create_har_sweep_tasks()
         print len(tasks)
@@ -87,7 +97,7 @@ class HARTaskManager():
             set_execution_status(True)
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
-
+    '''
 if __name__ =="__main__":
 
     rospy.init_node('har_task_manager')
@@ -99,9 +109,12 @@ if __name__ =="__main__":
 
     while not rospy.is_shutdown():
         if hartask_manager.check_timeslot():
+            tasks = []
             taskid = randint(0,len(hartask_manager.sweep_tasks)-1)
             keys = hartask_manager.sweep_tasks.keys()
             key = keys[taskid]
+            tasks.append(hartask_manager.sweep_tasks[key])
+            tasks.append(hartask_manager.wait_task)
             rospy.loginfo("Sending task with id %s",key)
-            hartask_manager.send_task(hartask_manager.sweep_tasks[key])
+            hartask_manager.current_task_ids = hartask_manager.send_tasks(tasks)
         rate.sleep()
