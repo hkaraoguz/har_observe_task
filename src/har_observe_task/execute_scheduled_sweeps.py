@@ -58,8 +58,8 @@ class HARTaskManager():
                 self.current_wait_task_id=self.send_task(self.wait_task)
             elif taskevent.task.task_id is self.current_wait_task_id:
                 self.current_wait_task_id = self.send_task(self.wait_task)
-	if taskevent.event is 16:
-	    self.send_task(self.wait_task)
+        if taskevent.event is 16 and taskevent.task.task_id is self.current_task_id:
+            self.current_wait_task_id=self.send_task(self.wait_task)
 
 
 
@@ -95,8 +95,8 @@ class HARTaskManager():
         try:
             # add task to the execution framework
             task_id = add_task_srv(task)
-            
-            print 'hey', task_id
+
+            #print 'hey', task_id
             return task_id.task_id
 
         except rospy.ServiceException, e:
