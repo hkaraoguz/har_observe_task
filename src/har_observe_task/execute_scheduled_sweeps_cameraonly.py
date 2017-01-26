@@ -16,6 +16,7 @@ from deep_object_detection.srv import DetectObjects, DetectObjectsRequest
 from semantic_map.msg import RoomObservation
 from sensor_msgs.msg import Image
 import cv2
+from cv_bridge import CvBridge
 class HARTaskManager():
 
 
@@ -32,13 +33,13 @@ class HARTaskManager():
         self.set_exe_stat_srv_name = '/task_executor/set_execution_status'
         self.finished_sub = rospy.Subscriber('/local_metric_map/room_observations', RoomObservation, callback=self.finishedCB)
         sub = rospy.Subscriber("task_executor/events",TaskEvent,self.taskexecutorCB)
-        self.waypoints = ['WayPoint19','Waypoint20','Waypoint23','WayPoint9']
+        self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
         self.goto_tasks = []
         for waypoint in self.waypoints:
             self.goto_tasks.append(create_go_to_waypoint_task(waypoint))
 
         # wait at waypoint 22 middle of the corridor
-        self.wait_task = create_go_to_waypoint_task("ChargingPoint")
+        self.wait_task = create_go_to_waypoint_task("WayPoint22")
         #self.deep_object_detection_srv_name = 'deep_net/detect_objects'
         try:
             rospy.wait_for_service(self.add_task_srv_name,timeout=10)
@@ -75,8 +76,10 @@ class HARTaskManager():
             rospy.logerr("No deep_object detection service")
             return
         try:
-            server = rospy.ServiceProxy('/deep_object_detection/detect_objects', DetectObject)
-            resp = server(req)
+            server = rospy.ServiceProxy('/deep_object_detection/detect_objects', DetectObjects)
+            req = DetectObjectsRequest()
+            req.images=self.images
+	    resp = server(req)
         except rospy.ServiceException, e:
             self.images=[]
             print "Service call failed: %s"%e
@@ -86,10 +89,11 @@ class HARTaskManager():
             if obj.label == "person":
                 person_count +=1
         if person_count > 0:
+            bridge = CvBridge()
             cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
             filename = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             filename += ".jpg"
-            cv2.imwrite(filename,cv_image.img)
+            cv2.imwrite(filename,cv_image)
             self.images = []
             self.observation_sub.unregister()
             if self.timer:
@@ -135,7 +139,7 @@ class HARTaskManager():
            #     self.current_wait_task_id = self.send_task(self.wait_task)
         if taskevent.event is 16 and taskevent.task.task_id is self.current_task_id:
             self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
-            self.timer = rospy.Timer(rospy.Duration(10), self.timerCB,oneshot=True)
+            self.timer = rospy.Timer(rospy.Duration(30), self.timerCB,oneshot=True)
             #self.current_wait_task_id=self.send_task(self.wait_task)
 
 
@@ -206,7 +210,7 @@ if __name__ =="__main__":
     while not rospy.is_shutdown():
         if hartask_manager.check_timeslot():
             taskno = randint(0,len(hartask_manager.goto_tasks)-1)
-            rospy.loginfo("Sending task with id %s",key)
+            rospy.loginfo("Sending task with id %s",taskno)
             hartask_manager.current_task_id = hartask_manager.send_task(hartask_manager.goto_tasks[taskno])
             #hartask_manager.current_wait_task_id = hartask_manager.send_task(hartask_manager.wait_task)
             #tasks.append(hartask_manager.sweep_tasks[key])
