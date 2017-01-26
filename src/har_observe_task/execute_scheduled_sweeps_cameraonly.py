@@ -62,8 +62,7 @@ class HARTaskManager():
         self.observation_sub.unregister()
         self.current_wait_task_id=self.send_task(self.wait_task)
 
-     def observationCB(self, msg):
-
+    def observationCB(self, msg):
         #self.sweep_detections.append(self.latest_detections)
         self.images.append(msg)
         person_count = 0
@@ -100,8 +99,7 @@ class HARTaskManager():
 
 
 
-    def log_data(self):
-
+    #def log_data(self):
     def finishedCB(self, msg):
 
         sweep_dir = path.abspath(path.join(path.abspath(msg.xml_file_name), path.pardir))
