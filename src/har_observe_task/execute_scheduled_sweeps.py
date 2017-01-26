@@ -26,7 +26,7 @@ class HARTaskManager():
         sub = rospy.Subscriber("task_executor/events",TaskEvent,self.taskexecutorCB)
 
         # wait at waypoint 22
-        self.wait_task = create_go_to_waypoint_task('22')
+        self.wait_task = create_go_to_waypoint_task("WayPoint22")
         #self.deep_object_detection_srv_name = 'deep_net/detect_objects'
         try:
             rospy.wait_for_service(self.add_task_srv_name,timeout=10)
@@ -56,8 +56,8 @@ class HARTaskManager():
             if taskevent.task.task_id is self.current_task_id:
                 self.should_update_model = 0
                 self.current_wait_task_id=self.send_task(self.wait_task)
-            elif taskevent.task.task_id is self.current_wait_task_id:
-                self.current_wait_task_id = self.send_task(self.wait_task)
+           # elif taskevent.task.task_id is self.current_wait_task_id:
+           #     self.current_wait_task_id = self.send_task(self.wait_task)
         if taskevent.event is 16 and taskevent.task.task_id is self.current_task_id:
             self.current_wait_task_id=self.send_task(self.wait_task)
 
@@ -69,7 +69,7 @@ class HARTaskManager():
         arange = np.arange(1,10.1,0.25)
         #print arange
         for i in arange:
-            for j in range(-5,25):
+            for j in range(-5,5):
                 #print int((i+8)*60)+j
                 self.minutes[int((i+8)*60)+j] = count
             count+=1
