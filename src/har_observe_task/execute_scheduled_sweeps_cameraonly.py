@@ -17,6 +17,12 @@ from semantic_map.msg import RoomObservation
 from sensor_msgs.msg import Image
 import cv2
 from cv_bridge import CvBridge
+import rosbag
+import copy
+import os
+
+
+
 class HARTaskManager():
 
 
@@ -29,18 +35,30 @@ class HARTaskManager():
         self.previoustasktimeslot = -1
         self.should_update_model = 0
         self.timer = None
+        self.rosbag = None
+        self.datarootdir =  os.path.expanduser('~') # Get the home directory
+        self.datarootdir +="/harscheduling/"
+
+        if not os.path.exists(self.datarootdir):
+            os.makedirs(self.datarootdir)
+
+
         self.add_task_srv_name = '/task_executor/add_task'
         self.set_exe_stat_srv_name = '/task_executor/set_execution_status'
         self.finished_sub = rospy.Subscriber('/local_metric_map/room_observations', RoomObservation, callback=self.finishedCB)
+
         sub = rospy.Subscriber("task_executor/events",TaskEvent,self.taskexecutorCB)
+
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
+
         self.goto_tasks = []
+
         for waypoint in self.waypoints:
             self.goto_tasks.append(create_go_to_waypoint_task(waypoint))
 
-        # wait at waypoint 22 middle of the corridor
-        self.wait_task = create_go_to_waypoint_task("WayPoint22")
-        #self.deep_object_detection_srv_name = 'deep_net/detect_objects'
+        # wait at Charging Point middle of the corridor
+        self.wait_task = create_go_to_waypoint_task("ChargingPoint")
+        
         try:
             rospy.wait_for_service(self.add_task_srv_name,timeout=10)
         except:
@@ -62,6 +80,8 @@ class HARTaskManager():
         rospy.loginfo("Timer callback")
         self.observation_sub.unregister()
         self.current_wait_task_id=self.send_task(self.wait_task)
+        self.rosbag.close()
+        self.rosbag = None
 
     def observationCB(self, msg):
         #self.sweep_detections.append(self.latest_detections)
@@ -85,13 +105,17 @@ class HARTaskManager():
             print "Service call failed: %s"%e
             return
 
+        if self.rosbag:
+            self.rosbag.write('/head_xtion/rgb/image_rect_color',Image)
+
         for obj in resp.objects:
-            if obj.label == "person":
+            if obj.label == "person" and obj.width*obj.height > 1600:
                 person_count +=1
         if person_count > 0:
             bridge = CvBridge()
-            cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-            filename = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+            filename = copy.deepcopy(self.datarootdir)
+            filename = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
             filename += ".jpg"
             cv2.imwrite(filename,cv_image)
             self.images = []
@@ -139,6 +163,10 @@ class HARTaskManager():
            #     self.current_wait_task_id = self.send_task(self.wait_task)
         if taskevent.event is 16 and taskevent.task.task_id is self.current_task_id:
             self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
+            filename = copy.deepcopy(self.datarootdir)
+            filename = datetime.now().strftime('%Y-%m-%d_%H:%M')
+            filename += ".bag"
+            self.rosbag = rosbag.Bag(filename, 'w')
             self.timer = rospy.Timer(rospy.Duration(30), self.timerCB,oneshot=True)
             #self.current_wait_task_id=self.send_task(self.wait_task)
 
