@@ -33,8 +33,12 @@ def create_har_observation_tasks(duration=rospy.Duration(30*60)):
         task_utils.add_float_argument(task, 1.0)
         tasks.append(task)
 
-
     return tasks
+
+def create_wait_action_task():
+    task = Task(action='wait_action', max_duration=rospy.Duration(5*60), start_node_id='ChargingPoint')
+    return task
+
 def create_go_to_waypoint_task(waypoint):
      task = Task(start_node_id=waypoint)
      task.max_duration.secs = int(2 * 60)
