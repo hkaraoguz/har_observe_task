@@ -55,11 +55,11 @@ class HARTaskManager():
         self.goto_tasks = []
 
         for waypoint in self.waypoints:
-            self.goto_tasks.append(create_go_to_waypoint_task(waypoint))
+            self.goto_tasks.append(create_wait_action_task(waypoint))
 
         # wait at Charging Point middle of the corridor
         #self.wait_task = create_wait_action_task()
-        self.wait_task = create_go_to_waypoint_task("WayPoint1")
+        self.wait_task = create_wait_action_task("WayPoint1")
 
         try:
             rospy.wait_for_service(self.add_task_srv_name,timeout=10)
