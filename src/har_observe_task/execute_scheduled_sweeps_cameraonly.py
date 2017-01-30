@@ -55,7 +55,7 @@ class HARTaskManager():
         self.goto_tasks = []
 
         for waypoint in self.waypoints:
-            self.goto_tasks.append(create_wait_action_task(waypoint))
+            self.goto_tasks.append(create_go_to_waypoint_task(waypoint))
 
         # wait at Charging Point middle of the corridor
         #self.wait_task = create_wait_action_task()
