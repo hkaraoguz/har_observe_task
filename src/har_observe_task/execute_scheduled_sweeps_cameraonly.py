@@ -34,6 +34,7 @@ class HARTaskManager():
         self.current_wait_task_id = -1
         self.previoustasktimeslot = -1
         self.should_update_model = 0
+        self.person_count  = 0
         self.timer = None
         self.rosbag = None
         self.datarootdir =  os.path.expanduser('~') # Get the home directory
@@ -83,12 +84,11 @@ class HARTaskManager():
         self.current_wait_task_id=self.send_task(self.wait_task)
         self.rosbag.close()
         self.rosbag = None
+        self.person_count = 0
 
     def observationCB(self, msg):
         #self.sweep_detections.append(self.latest_detections)
         self.images.append(msg)
-        person_count = 0
-
         try:
             rospy.wait_for_service('/deep_object_detection/detect_objects',timeout=10)
         except:
@@ -100,7 +100,7 @@ class HARTaskManager():
             server = rospy.ServiceProxy('/deep_object_detection/detect_objects', DetectObjects)
             req = DetectObjectsRequest()
             req.images=self.images
-	    resp = server(req)
+	    resp = server(req,confidence_threshold=0.85)
         except rospy.ServiceException, e:
             self.images=[]
             print "Service call failed: %s"%e
@@ -112,14 +112,15 @@ class HARTaskManager():
         person_objs = []
         for obj in resp.objects:
             if obj.label == "person" and obj.width*obj.height > 4096:
-                person_count +=1
+                self.person_count +=1
                 person_objs.append(obj)
-        if person_count > 0:
+        if self.person_count > 2:
+            self.person_count = 0
             bridge = CvBridge()
             cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
             for person_obj in person_objs:
                 cv2.rectangle(cv_image,(person_obj.x,person_obj.y),(person_obj.x+person_obj.width, person_obj.y+person_obj.height),color=(255,255,0),thickness=2)
-                text = person_obj.label + " " +"%.2f"%person_obj.confidence
+                text = "%.2f"%person_obj.confidence
                 cv2.putText(cv_image,text,(person_obj.x+person_obj.width/4,person_obj.y+person_obj.height/2),cv2.FONT_HERSHEY_SIMPLEX,0.7,color=(255,0,255),thickness=2)
             filename = copy.deepcopy(self.datarootdir)
             filename += datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
@@ -156,12 +157,14 @@ class HARTaskManager():
 
     def startObservationCB(self,event):
         rospy.loginfo("Start Observation callback")
-        self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
+
         filename = copy.deepcopy(self.datarootdir)
         filename += datetime.now().strftime('%Y-%m-%d_%H:%M')
         filename += ".bag"
         rospy.loginfo("Rosbag path: %s",filename)
         self.rosbag = rosbag.Bag(filename, 'w')
+        self.person_count = 0
+        self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
         self.timer = rospy.Timer(rospy.Duration(20), self.timerCB,oneshot=True)
 
             #sys.exit(-1)
