@@ -111,7 +111,7 @@ class HARTaskManager():
             self.rosbag.write('/head_xtion/rgb/image_rect_color',msg)
         person_objs = []
         for obj in resp.objects:
-            if obj.label == "person" and obj.width*obj.height > 1600:
+            if obj.label == "person" and obj.width*obj.height > 4096:
                 person_count +=1
                 person_objs.append(obj)
         if person_count > 0:
@@ -154,7 +154,15 @@ class HARTaskManager():
             rospy.logerr("No topological localization service")
             return
 
-
+    def startObservationCB(self,event):
+        rospy.loginfo("Start Observation callback")
+        self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
+        filename = copy.deepcopy(self.datarootdir)
+        filename += datetime.now().strftime('%Y-%m-%d_%H:%M')
+        filename += ".bag"
+        rospy.loginfo("Rosbag path: %s",filename)
+        self.rosbag = rosbag.Bag(filename, 'w')
+        self.timer = rospy.Timer(rospy.Duration(20), self.timerCB,oneshot=True)
 
             #sys.exit(-1)
     def taskexecutorCB(self,taskevent):
@@ -169,13 +177,13 @@ class HARTaskManager():
            # elif taskevent.task.task_id is self.current_wait_task_id:
            #     self.current_wait_task_id = self.send_task(self.wait_task)
         if taskevent.event is 16 and taskevent.task.task_id is self.current_task_id:
-            self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
-            filename = copy.deepcopy(self.datarootdir)
-            filename += datetime.now().strftime('%Y-%m-%d_%H:%M')
-            filename += ".bag"
-            rospy.loginfo("Rosbag path: %s",filename)
-            self.rosbag = rosbag.Bag(filename, 'w')
-            self.timer = rospy.Timer(rospy.Duration(30), self.timerCB,oneshot=True)
+            #self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
+            #filename = copy.deepcopy(self.datarootdir)
+            #filename += datetime.now().strftime('%Y-%m-%d_%H:%M')
+            #filename += ".bag"
+            #rospy.loginfo("Rosbag path: %s",filename)
+            #self.rosbag = rosbag.Bag(filename, 'w')
+            self.timer = rospy.Timer(rospy.Duration(10), self.startObservationCB,oneshot=True)
             #self.current_wait_task_id=self.send_task(self.wait_task)
 
 
