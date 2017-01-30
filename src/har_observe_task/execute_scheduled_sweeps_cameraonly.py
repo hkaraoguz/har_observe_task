@@ -117,7 +117,7 @@ class HARTaskManager():
             bridge = CvBridge()
             cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
             filename = copy.deepcopy(self.datarootdir)
-            filename = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+            filename += datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
             filename += ".jpg"
             cv2.imwrite(filename,cv_image)
             self.images = []
@@ -166,7 +166,7 @@ class HARTaskManager():
         if taskevent.event is 16 and taskevent.task.task_id is self.current_task_id:
             self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
             filename = copy.deepcopy(self.datarootdir)
-            filename = datetime.now().strftime('%Y-%m-%d_%H:%M')
+            filename += datetime.now().strftime('%Y-%m-%d_%H:%M')
             filename += ".bag"
             rospy.loginfo("Rosbag path: %s",filename)
             self.rosbag = rosbag.Bag(filename, 'w')
