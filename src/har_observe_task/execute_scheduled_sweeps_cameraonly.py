@@ -107,6 +107,7 @@ class HARTaskManager():
             return
 
         if self.rosbag:
+            rospy.loginfo("Writing into rosbag")
             self.rosbag.write('/head_xtion/rgb/image_rect_color',msg)
 
         for obj in resp.objects:
@@ -167,6 +168,7 @@ class HARTaskManager():
             filename = copy.deepcopy(self.datarootdir)
             filename = datetime.now().strftime('%Y-%m-%d_%H:%M')
             filename += ".bag"
+            rospy.loginfo("Rosbag path: %s",filename)
             self.rosbag = rosbag.Bag(filename, 'w')
             self.timer = rospy.Timer(rospy.Duration(30), self.timerCB,oneshot=True)
             #self.current_wait_task_id=self.send_task(self.wait_task)
