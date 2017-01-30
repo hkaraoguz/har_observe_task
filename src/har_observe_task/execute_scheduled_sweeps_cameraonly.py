@@ -100,7 +100,8 @@ class HARTaskManager():
             server = rospy.ServiceProxy('/deep_object_detection/detect_objects', DetectObjects)
             req = DetectObjectsRequest()
             req.images=self.images
-	    resp = server(req,0.85)
+            req.confidence_threshold=0.85
+	    resp = server(req)
         except rospy.ServiceException, e:
             self.images=[]
             print "Service call failed: %s"%e
