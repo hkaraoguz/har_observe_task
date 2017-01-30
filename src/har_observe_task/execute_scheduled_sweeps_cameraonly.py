@@ -191,10 +191,10 @@ class HARTaskManager():
     def create_timeslot_array(self):
         self.minutes = [-1]*1440
         count = 0
-        arange = np.arange(1,10.1,0.25)
+        arange = np.arange(1,10.1,0.2)
         #print arange
         for i in arange:
-            for j in range(-5,5):
+            for j in range(-2,2):
                 #print int((i+8)*60)+j
                 self.minutes[int((i+8)*60)+j] = count
             count+=1
