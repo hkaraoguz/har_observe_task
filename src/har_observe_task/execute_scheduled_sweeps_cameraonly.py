@@ -109,13 +109,18 @@ class HARTaskManager():
         if self.rosbag:
             rospy.loginfo("Writing into rosbag")
             self.rosbag.write('/head_xtion/rgb/image_rect_color',msg)
-
+        person_objs = []
         for obj in resp.objects:
             if obj.label == "person" and obj.width*obj.height > 1600:
                 person_count +=1
+                person_objs.append(obj)
         if person_count > 0:
             bridge = CvBridge()
             cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+            for person_obj in person_objs:
+                cv2.rectangle(cv_image,(person_obj.x,person_obj.y),(person_obj.x+person_obj.width, person_obj.y+person_obj.height),color=(255,255,0),thickness=2)
+                text = person_obj.label + " " +"%.2f"%person_obj.confidence
+                cv2.putText(cv_image,text,(person_obj.x+person_obj.width/4,person_obj.y+person_obj.height/2),cv2.FONT_HERSHEY_SIMPLEX,0.7,color=(255,0,255),thickness=2)
             filename = copy.deepcopy(self.datarootdir)
             filename += datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
             filename += ".jpg"
