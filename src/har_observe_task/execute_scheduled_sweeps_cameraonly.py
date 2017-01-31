@@ -91,9 +91,7 @@ class HARTaskManager():
         self.create_timeslot_array()
 
 
-        # make sure the executive is running -- this only needs to be done once for the whole system not for every task
-        set_execution_status = rospy.ServiceProxy(self.set_exe_stat_srv_name, strands_executive_msgs.srv.SetExecutionStatus)
-        set_execution_status(True)
+
         #self.sweep_tasks = create_har_sweep_tasks("journalExpKTH","roi","configHARRooms")
 
         #print self.sweep_tasks.keys()
@@ -249,6 +247,9 @@ class HARTaskManager():
         #print timeminutes
         if(self.minutes[timeminutes] >= 0 and self.minutes[timeminutes] is not self.previoustasktimeslot):
             rospy.loginfo("Now it is time to do a task")
+            # make sure the executive is running -- this only needs to be done once for the whole system not for every task
+            set_execution_status = rospy.ServiceProxy(self.set_exe_stat_srv_name, strands_executive_msgs.srv.SetExecutionStatus)
+            set_execution_status(True)
             self.previoustasktimeslot = self.minutes[timeminutes]
             return True
         return False
