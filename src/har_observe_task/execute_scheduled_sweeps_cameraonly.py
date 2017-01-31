@@ -144,7 +144,7 @@ class HARTaskManager():
 
         if self.rosbag:
             rospy.loginfo("Writing into rosbag")
-            self.rosbag.write('/head_xtion/rgb/image_rect_color',msg)
+            self.rosbag.write('/head_xtion/rgb/image_rect_color',msg,rospy.Time.now())
 
         person_objs = []
 
