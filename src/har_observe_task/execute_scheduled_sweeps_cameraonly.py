@@ -99,9 +99,9 @@ class HARTaskManager():
         f = open(self.logfilename, 'a')
         if f:
             if success is 1:
-                s = "Success"+"\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+"\t"+place+"\t"+str(person_count)+"\n"
+                s = "Success\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\t'+place+'\t'+str(person_count)+'\n'
             else:
-                s = "Fail"+"\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+"\n"
+                s = "Fail\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\n'
             f.write(s)
             f.close()
         else:
@@ -145,6 +145,7 @@ class HARTaskManager():
             self.rosbag.write('/head_xtion/rgb/image_rect_color',msg,rospy.Time.now())
 
         person_objs = []
+        self.images = []
 
         for obj in resp.objects:
             if obj.label == "person" and obj.width*obj.height > 4096:
@@ -210,10 +211,11 @@ class HARTaskManager():
             #sys.exit(-1)
     def taskexecutorCB(self,taskevent):
         #task is not succeeded
-        print taskevent.event
-        print taskevent.task.task_id
-        print self.current_task_id
+        #print taskevent.event
+        #print taskevent.task.task_id
+        #print self.current_task_id
         if taskevent.event > 9 and taskevent.event is not 16:
+            rospy.logwarn("Task did no succeed")
             if taskevent.task.task_id is self.current_task_id:
                 self.should_update_model = 0
                 self.logdata(success=0)
@@ -222,6 +224,7 @@ class HARTaskManager():
            #     self.current_wait_task_id = self.send_task(self.wait_task)
         if taskevent.task.task_id is self.current_task_id:
             if taskevent.event is 16:
+                rospy.loginfo("Task suceeded")
                 self.timer = rospy.Timer(rospy.Duration(10), self.startObservationCB,oneshot=True)
 
 
