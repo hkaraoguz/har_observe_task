@@ -52,8 +52,10 @@ class HARTaskManager():
         self.logfilename = copy.deepcopy(self.datarootdir)
         self.logfilename += datetime.now().strftime('%Y-%m-%d')
         self.logfilename += ".txt"
-        f = open(self.logfilename, 'w')
-        f.close()
+
+        if not os.path.isfile(self.logfilename):
+            f = open(self.logfilename, 'w')
+            f.close()
 
         ''''''
 
