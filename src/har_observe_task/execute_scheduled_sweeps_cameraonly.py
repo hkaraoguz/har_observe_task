@@ -216,7 +216,7 @@ class HARTaskManager():
         if taskevent.event > 9 and taskevent.event is not 16:
             if taskevent.task.task_id is self.current_task_id:
                 self.should_update_model = 0
-                self.logdata(success=1,)
+                self.logdata(success=0)
                 self.current_wait_task_id=self.send_task(self.wait_task)
            # elif taskevent.task.task_id is self.current_wait_task_id:
            #     self.current_wait_task_id = self.send_task(self.wait_task)
