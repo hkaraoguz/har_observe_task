@@ -177,7 +177,7 @@ class HARTaskManager():
 
 
 
-    
+
     def finishedCB(self, msg):
 
         sweep_dir = path.abspath(path.join(path.abspath(msg.xml_file_name), path.pardir))
@@ -207,7 +207,7 @@ class HARTaskManager():
         self.rosbag = rosbag.Bag(filename, 'w')
         self.person_count = 0
         self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
-        self.timer = rospy.Timer(rospy.Duration(15), self.timerCB,oneshot=True)
+        self.timer = rospy.Timer(rospy.Duration(25), self.timerCB,oneshot=True)
 
             #sys.exit(-1)
     def taskexecutorCB(self,taskevent):
