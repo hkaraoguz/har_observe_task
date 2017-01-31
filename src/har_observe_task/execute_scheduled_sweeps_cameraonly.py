@@ -153,7 +153,10 @@ class HARTaskManager():
                 person_objs.append(obj)
 
         if self.person_count > 2:
+            rospy.loginfo("Human observation suceeded")
             self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
+            self.rosbag.close()
+            self.rosbag = None
             bridge = CvBridge()
             cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
@@ -172,7 +175,7 @@ class HARTaskManager():
             if self.timer:
                 self.timer.shutdown()
                 self.timer =None
-                self.current_wait_task_id=self.send_task(self.wait_task)
+            self.current_wait_task_id=self.send_task(self.wait_task)
 
 
 
@@ -215,8 +218,9 @@ class HARTaskManager():
         #print taskevent.task.task_id
         #print self.current_task_id
         if taskevent.event > 9 and taskevent.event is not 16:
-            rospy.logwarn("Task did no succeed")
+
             if taskevent.task.task_id is self.current_task_id:
+                rospy.logwarn("Goto task did not succeed")
                 self.should_update_model = 0
                 self.logdata(success=0)
                 self.current_wait_task_id=self.send_task(self.wait_task)
