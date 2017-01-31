@@ -111,7 +111,9 @@ class HARTaskManager():
 
     def timerCB(self,event):
         rospy.loginfo("Timer callback")
+
         self.observation_sub.unregister()
+        self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
         self.current_wait_task_id=self.send_task(self.wait_task)
         self.rosbag.close()
         self.rosbag = None
@@ -150,10 +152,6 @@ class HARTaskManager():
                 person_objs.append(obj)
 
         if self.person_count > 2:
-
-            self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
-
-            self.person_count = 0
 
             bridge = CvBridge()
             cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
