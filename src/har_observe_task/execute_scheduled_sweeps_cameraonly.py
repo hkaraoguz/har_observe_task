@@ -151,7 +151,7 @@ class HARTaskManager():
 
         if self.person_count > 2:
 
-            self.log_data(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
+            self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
 
             self.person_count = 0
 
@@ -177,7 +177,7 @@ class HARTaskManager():
 
 
 
-    #def log_data(self):
+    
     def finishedCB(self, msg):
 
         sweep_dir = path.abspath(path.join(path.abspath(msg.xml_file_name), path.pardir))
