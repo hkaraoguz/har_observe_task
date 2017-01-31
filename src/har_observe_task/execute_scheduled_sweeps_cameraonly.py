@@ -152,7 +152,7 @@ class HARTaskManager():
                 person_objs.append(obj)
 
         if self.person_count > 2:
-
+            self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
             bridge = CvBridge()
             cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
