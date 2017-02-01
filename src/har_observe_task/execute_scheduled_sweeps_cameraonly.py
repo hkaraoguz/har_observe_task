@@ -279,9 +279,9 @@ class HARTaskManager():
     def update_observations(self,observed_data,person_count):
 
         if  person_count >= 2:
-            update_ind = 1
-        else:
             update_ind = 0
+        else:
+            update_ind = 1
 
         self.observed_data[self.current_task_num,update_ind] += 1
         np.savetxt(self.observationfilename,self.observed_data)
