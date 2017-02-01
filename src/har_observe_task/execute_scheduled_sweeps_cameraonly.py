@@ -41,6 +41,7 @@ class HARTaskManager():
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
         self.placenames =['Office612','Office621','MeetingRoom','Kitchen']
         self.goto_tasks = []
+        self.initialize_bandit(len(self.waypoints))
 
         ''' Prepare the root path for data storage '''
         self.datarootdir =  os.path.expanduser('~') # Get the home directory
@@ -53,8 +54,16 @@ class HARTaskManager():
         self.logfilename += datetime.now().strftime('%Y-%m-%d')
         self.logfilename += ".txt"
 
+        self.observationfilename = copy.deepcopy(self.datarootdir)
+        self.observationfilename += datetime.now().strftime('%Y-%m-%d_observations')
+        self.observationfilename += ".txt"
+
         if not os.path.isfile(self.logfilename):
             f = open(self.logfilename, 'w')
+            f.close()
+
+        if not os.path.isfile(self.observationfilename):
+            f = open(self.observationfilename, 'w')
             f.close()
 
         ''''''
@@ -114,6 +123,9 @@ class HARTaskManager():
 
         self.observation_sub.unregister()
         self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
+
+        self.update_observations(self.observed_data,self.person_count)
+
         self.current_wait_task_id=self.send_task(self.wait_task)
         self.rosbag.close()
         self.rosbag = None
@@ -152,9 +164,16 @@ class HARTaskManager():
                 self.person_count +=1
                 person_objs.append(obj)
 
-        if self.person_count > 2:
+        if self.person_count >= 2:
+
+            self.observation_sub.unregister()
+            if self.timer:
+                self.timer.shutdown()
+                self.timer =None
+
             rospy.loginfo("Human observation suceeded")
             self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
+            self.update_observations(self.observed_data,self.person_count)
             self.rosbag.close()
             self.rosbag = None
             bridge = CvBridge()
@@ -170,11 +189,7 @@ class HARTaskManager():
             filename += ".jpg"
             cv2.imwrite(filename,cv_image)
             self.images = []
-            self.observation_sub.unregister()
 
-            if self.timer:
-                self.timer.shutdown()
-                self.timer =None
             self.current_wait_task_id=self.send_task(self.wait_task)
 
 
@@ -261,6 +276,43 @@ class HARTaskManager():
             return True
         return False
 
+    def update_observations(self,observed_data,person_count):
+
+        if  person_count >= 2:
+            update_ind = 1
+        else:
+            update_ind = 0
+
+        self.observed_data[self.current_task_num,update_ind] += 1
+        np.savetxt(self.observationfilename,self.observed_data)
+        #f = open(self.observationfilename, 'w')
+        #f.write(self.observed_data)
+
+    def thompson_sampling(self,observed_data):
+        return np.argmax( np.random.beta(observed_data[:,0], observed_data[:,1]) )
+
+
+    def UCB(self,observed_data):
+        #print observed_data
+        t = float(observed_data.sum()) # total number of rounds so far
+        #print t
+        totals = observed_data.sum(1)
+        #print totals
+        successes = observed_data[:,0]
+        estimated_means = successes/totals # sample mean
+        estimated_variances = estimated_means - estimated_means**2
+        UCB = estimated_means + np.sqrt( np.minimum( estimated_variances + np.sqrt(2*np.log(t)/totals), 0.25 ) * np.log(t)/totals )
+        return np.argmax(UCB)
+
+    def initialize_bandit(self,num_classes):
+
+        prior_a = 1. # aka successes
+        prior_b = 1. # aka failures
+        self.observed_data = np.zeros((num_classes,2))
+        self.observed_data[:,0] += prior_a # allocating the initial conditions
+        self.observed_data[:,1] += prior_b
+        #regret = np.zeros(num_samples)
+        #print observed_data
 
     def send_task(self,task):
 
@@ -302,7 +354,8 @@ if __name__ =="__main__":
 
     while not rospy.is_shutdown():
         if hartask_manager.check_timeslot():
-            hartask_manager.current_task_num = randint(0,len(hartask_manager.goto_tasks)-1)
+            hartask_manager.current_task_num = hartask_manager.UCB(hartask_manager.observed_data)
+            #hartask_manager.current_task_num = randint(0,len(hartask_manager.goto_tasks)-1)
             rospy.loginfo("Sending task with id %s",hartask_manager.current_task_num)
             hartask_manager.current_task_id = hartask_manager.send_task(hartask_manager.goto_tasks[hartask_manager.current_task_num])
             #hartask_manager.current_wait_task_id = hartask_manager.send_task(hartask_manager.wait_task)
