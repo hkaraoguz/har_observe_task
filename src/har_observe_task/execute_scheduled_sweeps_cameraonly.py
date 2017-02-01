@@ -393,6 +393,7 @@ if __name__ =="__main__":
             hartask_manager.previous_task_num = hartask_manager.current_task_num
             hartask_manager.previous_person_locations = hartask_manager.current_person_locations
             hartask_manager.current_task_num = hartask_manager.thompson_sampling(hartask_manager.observed_data)
+            rospy.loginfo("Previous task num %d, Current task num %d",hartask_manager.previous_task_num,hartask_manager.current_task_num)
             #hartask_manager.current_task_num = hartask_manager.UCB(hartask_manager.observed_data)
             #hartask_manager.current_task_num = randint(0,len(hartask_manager.goto_tasks)-1)
             rospy.loginfo("Sending task with id %s",hartask_manager.current_task_num)
