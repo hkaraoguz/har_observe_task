@@ -392,7 +392,8 @@ if __name__ =="__main__":
         if hartask_manager.check_timeslot():
             hartask_manager.previous_task_num = hartask_manager.current_task_num
             hartask_manager.previous_person_locations = hartask_manager.current_person_locations
-            hartask_manager.current_task_num = hartask_manager.UCB(hartask_manager.observed_data)
+            hartask_manager.current_task_num = hartask_manager.thompson_sampling(hartask_manager.observed_data)
+            #hartask_manager.current_task_num = hartask_manager.UCB(hartask_manager.observed_data)
             #hartask_manager.current_task_num = randint(0,len(hartask_manager.goto_tasks)-1)
             rospy.loginfo("Sending task with id %s",hartask_manager.current_task_num)
             hartask_manager.current_task_id = hartask_manager.send_task(hartask_manager.goto_tasks[hartask_manager.current_task_num])
