@@ -20,8 +20,15 @@ from cv_bridge import CvBridge
 import rosbag
 import copy
 import os
+from collections import namedtuple
+Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
-
+def area(a, b):  # returns None if rectangles don't intersect
+    dx = min(a.xmax, b.xmax) - max(a.xmin, b.xmin)
+    dy = min(a.ymax, b.ymax) - max(a.ymin, b.ymin)
+    if (dx>=0) and (dy>=0):
+        return dx*dy
+    return 0
 
 class HARTaskManager():
 
@@ -30,9 +37,17 @@ class HARTaskManager():
 
         self.minutes=[]
         self.images = []
+
+        self.previous_person_locations = []
+        self.current_person_locations = []
+
         self.current_task_id = -1
+
+        self.previous_task_num = -1
         self.current_task_num = -1
+
         self.current_wait_task_id = -1
+
         self.previoustasktimeslot = -1
         self.should_update_model = 0
         self.person_count  = 0
@@ -162,6 +177,8 @@ class HARTaskManager():
         for obj in resp.objects:
             if obj.label == "person" and obj.width*obj.height > 4096:
                 self.person_count +=1
+                aRect = Rectangle(obj.x-obj.width/2,obj.x+obj.width/2,obj.y-obj.height/2,obj.y+obj.height/2)
+                self.current_person_locations.append(aRect)
                 person_objs.append(obj)
 
         if self.person_count >= 2:
@@ -276,10 +293,29 @@ class HARTaskManager():
             return True
         return False
 
+    def check_person_overlaps(self,current_observations,previous_observations):
+        overlaps = 0
+        for curobs in current_observations:
+            for prevobs in previous_observations:
+                if area(curobs,prevobs) >= 0.6:
+                    overlaps += 1
+        rospy.loginfo("Overlaps %d, current observations %d",overlaps, len(current_observations))
+        if float(overlaps)/len(current_observations) > 0.5:
+            return True
+
+        return False
+
+
     def update_observations(self,observed_data,person_count):
 
         if  person_count >= 2:
-            update_ind = 0
+            if self.previous_task_num is self.current_task_num:
+                if(self.check_person_overlaps(self.current_person_locations,self.previous_person_locations)):
+                    update_ind = 1
+                else:
+                    update_ind = 0
+            else:
+                update_ind = 0
         else:
             update_ind = 1
 
@@ -354,6 +390,8 @@ if __name__ =="__main__":
 
     while not rospy.is_shutdown():
         if hartask_manager.check_timeslot():
+            hartask_manager.previous_task_num = hartask_manager.current_task_num
+            hartask_manager.previous_person_locations = hartask_manager.current_person_locations
             hartask_manager.current_task_num = hartask_manager.UCB(hartask_manager.observed_data)
             #hartask_manager.current_task_num = randint(0,len(hartask_manager.goto_tasks)-1)
             rospy.loginfo("Sending task with id %s",hartask_manager.current_task_num)
