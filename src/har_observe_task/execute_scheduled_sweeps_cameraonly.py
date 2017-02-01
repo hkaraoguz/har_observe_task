@@ -73,6 +73,10 @@ class HARTaskManager():
         self.observationfilename += datetime.now().strftime('%Y-%m-%d_observations')
         self.observationfilename += ".txt"
 
+        self.banditstatefilename = copy.deepcopy(self.datarootdir)
+        self.banditstatefilename += datetime.now().strftime('%Y-%m-%d_banditstate')
+        self.banditstatefilename += ".txt"
+
         if not os.path.isfile(self.logfilename):
             f = open(self.logfilename, 'w')
             f.close()
@@ -131,6 +135,15 @@ class HARTaskManager():
         else:
             rospy.logerr("Log file could not be opened")
 
+    def logbanditstate(self,state):
+       f = open(self.banditstatefilename, 'a')
+       if f:
+           s = datetime.now().strftime('%Y-%m-%d_%H:%M')+"\t"+str(state)+"\n"
+           f.write(s)
+           f.close()
+
+       else:
+           rospy.logerr("Bandit state Log file could not be opened")
 
 
     def timerCB(self,event):
@@ -254,6 +267,7 @@ class HARTaskManager():
             if taskevent.task.task_id is self.current_task_id:
                 rospy.logwarn("Goto task did not succeed")
                 self.should_update_model = 0
+                self.current_task_id = -1
                 self.logdata(success=0)
                 self.current_wait_task_id=self.send_task(self.wait_task)
            # elif taskevent.task.task_id is self.current_wait_task_id:
@@ -261,7 +275,7 @@ class HARTaskManager():
         if taskevent.task.task_id is self.current_task_id:
             if taskevent.event is 16:
                 rospy.loginfo("Task suceeded")
-                self.timer = rospy.Timer(rospy.Duration(10), self.startObservationCB,oneshot=True)
+                self.timer = rospy.Timer(rospy.Duration(5), self.startObservationCB,oneshot=True)
 
 
 
@@ -295,32 +309,40 @@ class HARTaskManager():
 
     def check_person_overlaps(self,current_observations,previous_observations):
         overlaps = 0
+        total_obs = len(current_observations)
         for curobs in current_observations:
             for prevobs in previous_observations:
                 if area(curobs,prevobs) >= 0.6:
                     overlaps += 1
+                    break
         rospy.loginfo("Overlaps %d, current observations %d",overlaps, len(current_observations))
-        if float(overlaps)/len(current_observations) > 0.5:
+        if float(overlaps)/total_obs > 0.5:
             return True
 
         return False
 
 
     def update_observations(self,observed_data,person_count):
-
+        state = 0
         if  person_count >= 2:
             if self.previous_task_num is self.current_task_num:
                 if(self.check_person_overlaps(self.current_person_locations,self.previous_person_locations)):
                     update_ind = 1
+                    state=2
                 else:
                     update_ind = 0
+
             else:
                 update_ind = 0
         else:
             update_ind = 1
+            state=1
+
+
 
         self.observed_data[self.current_task_num,update_ind] += 1
         np.savetxt(self.observationfilename,self.observed_data)
+        self.logbanditstate(state)
         #f = open(self.observationfilename, 'w')
         #f.write(self.observed_data)
 
@@ -391,7 +413,9 @@ if __name__ =="__main__":
     while not rospy.is_shutdown():
         if hartask_manager.check_timeslot():
             hartask_manager.previous_task_num = hartask_manager.current_task_num
-            hartask_manager.previous_person_locations = hartask_manager.current_person_locations
+            hartask_manager.previous_person_locations = copy.deepcopy(hartask_manager.current_person_locations)
+            del hartask_manager.current_person_locations
+            hartask_manager.current_person_locations = []
             hartask_manager.current_task_num = hartask_manager.thompson_sampling(hartask_manager.observed_data)
             rospy.loginfo("Previous task num %d, Current task num %d",hartask_manager.previous_task_num,hartask_manager.current_task_num)
             #hartask_manager.current_task_num = hartask_manager.UCB(hartask_manager.observed_data)
