@@ -361,7 +361,7 @@ class HARTaskManager():
         else:
             update_ind = 1
             state=1
-        index = self.waypoints[self.current_waypoint]
+        index = self.waypoints.index(self.current_waypoint)
         self.observed_data[index,update_ind] += 1
         np.savetxt(self.observationfilename,self.observed_data)
         self.logbanditstate(state)
