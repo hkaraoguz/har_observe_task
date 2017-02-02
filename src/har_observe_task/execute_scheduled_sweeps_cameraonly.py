@@ -297,6 +297,7 @@ class HARTaskManager():
            #     self.current_wait_task_id = self.send_task(self.wait_task)
         if taskevent.task in self.current_sequence_of_tasks:
             if taskevent.event == 16:
+                rospy.loginfo("Task succeeded")
                 if taskevent.task.start_node_id != "ChargingPoint":
                     self.current_waypoint = taskevent.task.start_node_id
 
