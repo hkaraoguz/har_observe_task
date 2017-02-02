@@ -281,8 +281,8 @@ class HARTaskManager():
         #print taskevent.event
         #print taskevent.task.task_id
         #print self.current_task_id
-        print taskevent.task
-        print self.current_sequence_of_tasks
+        #print taskevent.task
+        #print self.current_sequence_of_tasks
         if taskevent.event > 9 and taskevent.event != 16:
 
             if taskevent.task.task_id in self.task_ids:
