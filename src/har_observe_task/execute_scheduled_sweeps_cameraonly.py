@@ -2,7 +2,7 @@
 from strands_executive_msgs import task_utils
 from strands_executive_msgs.msg import Task, TaskEvent
 import strands_executive_msgs
-from strands_executive_msgs.srv import AddTasks, AddTask
+from strands_executive_msgs.srv import AddTasks, AddTask, GetActiveTasks
 from strands_navigation_msgs.srv import LocalisePose
 from find_waypoints import *
 from create_tasks import *
@@ -41,9 +41,11 @@ class HARTaskManager():
         self.previous_person_locations = []
         self.current_person_locations = []
 
+        self.current_sequence_of_tasks = []
+        self.current_task_index = 0
+
         self.current_task_id = -1
 
-        self.previous_task_num = -1
         self.current_task_num = -1
 
         self.current_wait_task_id = -1
@@ -54,8 +56,21 @@ class HARTaskManager():
         self.timer = None
         self.rosbag = None
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
-        self.placenames =['Office612','Office621','MeetingRoom','Kitchen']
+        self.current_waypoint = ""
+        self.placenames = dict()
+        self.placenames[self.waypoints[0]] = "Office612"
+        self.placenames[self.waypoints[1]] = "Office621"
+        self.placenames[self.waypoints[2]] = "MeetingRoom"
+        self.placenames[self.waypoints[3]] = "Kitchen"
+        #self.placenames =['Office612','Office621','MeetingRoom','Kitchen']
+
         self.goto_tasks = []
+        for waypoint in self.waypoints:
+            self.goto_tasks.append(create_go_to_waypoint_task(waypoint))
+
+        ''' Create the charging task '''
+        self.wait_task = create_wait_action_task("ChargingPoint")
+        ''''''
 
 
         ''' Prepare the root path for data storage '''
@@ -65,55 +80,24 @@ class HARTaskManager():
         if not os.path.exists(self.datarootdir):
             os.makedirs(self.datarootdir)
 
-        self.logfilename = copy.deepcopy(self.datarootdir)
-        self.logfilename += datetime.now().strftime('%Y-%m-%d')
-        self.logfilename += ".txt"
+        self.initializeLoggingFiles()
 
-        self.observationfilename = copy.deepcopy(self.datarootdir)
-        self.observationfilename += datetime.now().strftime('%Y-%m-%d_observations')
-        self.observationfilename += ".txt"
-
-        self.banditstatefilename = copy.deepcopy(self.datarootdir)
-        self.banditstatefilename += datetime.now().strftime('%Y-%m-%d_banditstate')
-        self.banditstatefilename += ".txt"
-
-        if not os.path.isfile(self.logfilename):
-            f = open(self.logfilename, 'w')
-            f.close()
-
-        if not os.path.isfile(self.observationfilename):
-            f = open(self.observationfilename, 'w')
-            f.close()
-            self.initialize_bandit(len(self.waypoints),0)
-        else:
-            self.initialize_bandit(len(self.waypoints),1)
-
-        if not os.path.isfile(self.banditstatefilename):
-            f = open(self.observationfilename, 'w')
-            f.close()
-
-
-
-
-
+        self.create_sequence_of_tasks()
         ''''''
 
         ''' Services and message subscriptions '''
         self.add_task_srv_name = '/task_executor/add_task'
+        self.add_tasks_srv_name = '/task_executor/add_tasks'
         self.set_exe_stat_srv_name = '/task_executor/set_execution_status'
         self.finished_sub = rospy.Subscriber('/local_metric_map/room_observations', RoomObservation, callback=self.finishedCB)
 
         sub = rospy.Subscriber("task_executor/events",TaskEvent,self.taskexecutorCB)
         ''''''
 
-        for waypoint in self.waypoints:
-            self.goto_tasks.append(create_go_to_waypoint_task(waypoint))
 
         # wait at Charging Point middle of the corridor
         #self.wait_task = create_wait_action_task()
-        ''' Create the charging task '''
-        self.wait_task = create_wait_action_task("ChargingPoint")
-        ''''''
+
         ''' Check For Services '''
         try:
             rospy.wait_for_service(self.add_task_srv_name,timeout=10)
@@ -126,14 +110,36 @@ class HARTaskManager():
             rospy.logerr("Service not available!!")
             sys.exit(-1)
         ''''''
+    def initializeLoggingFiles(self):
 
-        self.create_timeslot_array()
+        self.logfilename = copy.deepcopy(self.datarootdir)
+        self.logfilename += datetime.now().strftime('%Y-%m-%d')
+        self.logfilename += ".txt"
+
+        self.observationfilename = copy.deepcopy(self.datarootdir)
+        self.observationfilename += datetime.now().strftime('%Y-%m-%d_observations')
+        self.observationfilename += ".txt"
+
+        self.probabilitiesfilename = copy.deepcopy(self.datarootdir)
+        self.probabilitiesfilename += datetime.now().strftime('%Y-%m-%d_probabilities')
+        self.probabilitiesfilename += ".txt"
+
+        if not os.path.isfile(self.logfilename):
+            f = open(self.logfilename, 'w')
+            f.close()
+
+        if not os.path.isfile(self.observationfilename):
+            f = open(self.observationfilename, 'w')
+            f.close()
+            self.initialize_bandit(len(self.waypoints),0)
+        else:
+            self.initialize_bandit(len(self.waypoints),1)
+
+        if not os.path.isfile(self.probabilitiesfilename):
+            f = open(self.probabilitiesfilename, 'w')
+            f.close()
 
 
-
-        #self.sweep_tasks = create_har_sweep_tasks("journalExpKTH","roi","configHARRooms")
-
-        #print self.sweep_tasks.keys()
     def logdata(self,success,place="",person_count=0):
         f = open(self.logfilename, 'a')
         if f:
@@ -161,14 +167,15 @@ class HARTaskManager():
         rospy.loginfo("Timer callback")
 
         self.observation_sub.unregister()
-        self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
+        self.logdata(success=1,place=self.placenames[self.current_waypoint],person_count=self.person_count)
 
         self.update_observations(self.observed_data,self.person_count)
 
-        self.current_wait_task_id=self.send_task(self.wait_task)
+        #self.current_wait_task_id=self.send_task(self.wait_task)
         self.rosbag.close()
         self.rosbag = None
         self.person_count = 0
+        self.current_waypoint=""
 
     def observationCB(self, msg):
         #self.sweep_detections.append(self.latest_detections)
@@ -213,7 +220,7 @@ class HARTaskManager():
                 self.timer =None
 
             rospy.loginfo("Human observation suceeded")
-            self.logdata(success=1,place=self.placenames[self.current_task_num],person_count=self.person_count)
+            self.logdata(success=1,place=self.placenames[self.current_waypoint],person_count=self.person_count)
             self.update_observations(self.observed_data,self.person_count)
             self.rosbag.close()
             self.rosbag = None
@@ -230,10 +237,9 @@ class HARTaskManager():
             filename += ".jpg"
             cv2.imwrite(filename,cv_image)
             self.images = []
+            self.current_waypoint = ""
 
-            self.current_wait_task_id=self.send_task(self.wait_task)
-
-
+            #self.current_wait_task_id=self.send_task(self.wait_task)
 
 
     def finishedCB(self, msg):
@@ -275,27 +281,32 @@ class HARTaskManager():
         #print self.current_task_id
         if taskevent.event > 9 and taskevent.event != 16:
 
-            if taskevent.task.task_id == self.current_task_id:
+            if taskevent.task in self.current_sequence_of_tasks:
+
                 rospy.logwarn("Goto task did not succeed")
-                self.should_update_model = 0
-                self.current_task_id = -1
                 self.logdata(success=0)
-                self.current_wait_task_id=self.send_task(self.wait_task)
+                srv = rospy.ServiceProxy("/task_executor/get_active_tasks", GetActiveTasks)
+                tasks = srv()
+                if len(tasks) == 0:
+                    self.current_wait_task_id=self.send_task(self.wait_task)
+
+
+                #self.current_wait_task_id=self.send_task(self.wait_task)
            # elif taskevent.task.task_id is self.current_wait_task_id:
            #     self.current_wait_task_id = self.send_task(self.wait_task)
-        if taskevent.task.task_id == self.current_task_id:
+        if taskevent.task in self.current_sequence_of_tasks:
             if taskevent.event == 16:
-                rospy.loginfo("Task suceeded")
+                if taskevent.task.start_node_id != "ChargingPoint":
+                    self.current_waypoint = taskevent.task.start_node_id
+
                 self.timer = rospy.Timer(rospy.Duration(5), self.startObservationCB,oneshot=True)
-
-
 
 
     def create_timeslot_array(self):
         self.minutes = [-1]*1440
         count = 0
         arange = np.arange(1,10,1)
-        interval = 10
+        interval = 20
         numtimeslot = 60/interval
         #print arange
         for i in arange:
@@ -342,22 +353,12 @@ class HARTaskManager():
     def update_observations(self,observed_data,person_count):
         state = 0
         if  person_count >= 2:
-            if self.previous_task_num == self.current_task_num:
-                if(self.check_person_overlaps(self.current_person_locations,self.previous_person_locations)):
-                    update_ind = 1
-                    state=2
-                else:
-                    update_ind = 0
-
-            else:
-                update_ind = 0
+            update_ind = 0
         else:
             update_ind = 1
             state=1
-
-
-
-        self.observed_data[self.current_task_num,update_ind] += 1
+        index = self.waypoints[self.current_waypoint]
+        self.observed_data[index,update_ind] += 1
         np.savetxt(self.observationfilename,self.observed_data)
         self.logbanditstate(state)
         #f = open(self.observationfilename, 'w')
@@ -365,6 +366,9 @@ class HARTaskManager():
 
     def thompson_sampling(self,observed_data):
         return np.argmax( np.random.beta(observed_data[:,0], observed_data[:,1]) )
+
+    def thompson_sampling2(self,observed_data):
+        return np.random.beta(observed_data[:,0], observed_data[:,1])
 
 
     def UCB(self,observed_data):
@@ -389,8 +393,53 @@ class HARTaskManager():
         else:
             self.observed_data = np.loadtxt(self.observationfilename)
         print self.observed_data
+
         #regret = np.zeros(num_samples)
         #print observed_data
+
+    def create_sequence_of_tasks(self):
+
+        probs = self.thompson_sampling2(self.observed_data)
+        f = open(self.probabilitiesfilename,"a")
+        st = ""
+        for prob in probs:
+            st += "%.2f"%prob
+            st+="\t"
+        st+="\n"
+        f.write(st)
+        f.close()
+
+        probs = probs[::-1]
+        indexes = probs.argsort()
+        indexes = indexes[::-1]
+        print indexes
+        for i,index in enumerate(indexes):
+            atask = copy.deepcopy(self.goto_tasks[index])
+            atask.start_after = rospy.Time.now().secs+ i*4*60
+            self.current_sequence_of_tasks.append(atask)
+
+        atask = copy.deepcopy(self.wait_task)
+        atask.start_after = rospy.Time.now().secs+ len(indexes)*4*60
+        self.current_sequence_of_tasks.append(atask)
+        #print self.current_sequence_of_tasks
+
+
+        #hartask_manager.current_task_num
+
+    def send_tasks(self,tasks):
+        add_tasks_srv = rospy.ServiceProxy(self.add_tasks_srv_name, AddTasks)
+        task_ids = []
+        try:
+            # add task to the execution framework
+            task_ids = add_tasks_srv(tasks)
+
+            #print 'hey', task_id
+            return task_ids.task_ids
+
+        except rospy.ServiceException, e:
+            print "Service call failed: %s"%e
+            return task_ids
+
 
     def send_task(self,task):
 
@@ -432,16 +481,15 @@ if __name__ =="__main__":
 
     while not rospy.is_shutdown():
         if hartask_manager.check_timeslot():
-            hartask_manager.previous_task_num = hartask_manager.current_task_num
-            hartask_manager.previous_person_locations = copy.deepcopy(hartask_manager.current_person_locations)
-            del hartask_manager.current_person_locations
-            hartask_manager.current_person_locations = []
-            hartask_manager.current_task_num = hartask_manager.thompson_sampling(hartask_manager.observed_data)
-            rospy.loginfo("Previous task num %d, Current task num %d",hartask_manager.previous_task_num,hartask_manager.current_task_num)
+
+            hartask_manager.create_sequence_of_tasks()
+            hartask_manager.send_tasks(hartask_manager.current_sequence_of_tasks)
+
+            #rospy.loginfo("Previous task num %d, Current task num %d",hartask_manager.previous_task_num,hartask_manager.current_task_num)
             #hartask_manager.current_task_num = hartask_manager.UCB(hartask_manager.observed_data)
             #hartask_manager.current_task_num = randint(0,len(hartask_manager.goto_tasks)-1)
-            rospy.loginfo("Sending task with id %s",hartask_manager.current_task_num)
-            hartask_manager.current_task_id = hartask_manager.send_task(hartask_manager.goto_tasks[hartask_manager.current_task_num])
+            #rospy.loginfo("Sending task with id %s",hartask_manager.current_task_num)
+            #hartask_manager.current_task_id = hartask_manager.send_task(hartask_manager.goto_tasks[hartask_manager.current_task_num])
             #hartask_manager.current_wait_task_id = hartask_manager.send_task(hartask_manager.wait_task)
             #tasks.append(hartask_manager.sweep_tasks[key])
             #tasks.append(hartask_manager.wait_task)
