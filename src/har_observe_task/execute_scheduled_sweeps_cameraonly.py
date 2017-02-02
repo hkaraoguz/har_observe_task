@@ -37,6 +37,7 @@ class HARTaskManager():
 
         self.minutes=[]
         self.images = []
+        self.task_ids = []
 
         self.previous_person_locations = []
         self.current_person_locations = []
@@ -284,7 +285,7 @@ class HARTaskManager():
         print self.current_sequence_of_tasks
         if taskevent.event > 9 and taskevent.event != 16:
 
-            if taskevent.task in self.current_sequence_of_tasks:
+            if taskevent.task.task_id in self.task_ids:
 
                 rospy.logwarn("Goto task did not succeed")
                 self.logdata(success=0)
@@ -297,13 +298,12 @@ class HARTaskManager():
                 #self.current_wait_task_id=self.send_task(self.wait_task)
            # elif taskevent.task.task_id is self.current_wait_task_id:
            #     self.current_wait_task_id = self.send_task(self.wait_task)
-        if taskevent.task in self.current_sequence_of_tasks:
+        if taskevent.task.task_id in self.task_ids:
             if taskevent.event == 16:
                 rospy.loginfo("Task succeeded")
                 if taskevent.task.start_node_id != "ChargingPoint":
                     self.current_waypoint = taskevent.task.start_node_id
-
-                self.timer = rospy.Timer(rospy.Duration(5), self.startObservationCB,oneshot=True)
+                    self.timer = rospy.Timer(rospy.Duration(5), self.startObservationCB,oneshot=True)
 
 
     def create_timeslot_array(self):
@@ -436,17 +436,17 @@ class HARTaskManager():
 
     def send_tasks(self,tasks):
         add_tasks_srv = rospy.ServiceProxy(self.add_tasks_srv_name, AddTasks)
-        task_ids = []
+        self.task_ids = []
         try:
             # add task to the execution framework
             task_ids = add_tasks_srv(tasks)
 
             #print 'hey', task_id
-            return task_ids.task_ids
+            self.task_ids = task_ids.task_ids
 
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
-            return task_ids
+            #return task_ids
 
 
     def send_task(self,task):
