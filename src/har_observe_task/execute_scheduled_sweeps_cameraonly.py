@@ -355,16 +355,16 @@ class HARTaskManager():
 
 
     def update_observations(self,observed_data,person_count):
-        state = 0
+
         if  person_count >= 2:
             update_ind = 0
         else:
             update_ind = 1
-            state=1
+            
         index = self.waypoints.index(self.current_waypoint)
         self.observed_data[index,update_ind] += 1
         np.savetxt(self.observationfilename,self.observed_data)
-        self.logbanditstate(state)
+        #self.logbanditstate(state)
         #f = open(self.observationfilename, 'w')
         #f.write(self.observed_data)
 
