@@ -62,6 +62,7 @@ class HARTaskManager():
         self.placenames[self.waypoints[1]] = "Office621"
         self.placenames[self.waypoints[2]] = "MeetingRoom"
         self.placenames[self.waypoints[3]] = "Kitchen"
+        self.create_timeslot_array()
         #self.placenames =['Office612','Office621','MeetingRoom','Kitchen']
 
         self.goto_tasks = []
@@ -306,7 +307,7 @@ class HARTaskManager():
         self.minutes = [-1]*1440
         count = 0
         arange = np.arange(1,10,1)
-	interval = 20
+        interval = 20
         numtimeslot = 60/interval
         #print arange
         for i in arange:
