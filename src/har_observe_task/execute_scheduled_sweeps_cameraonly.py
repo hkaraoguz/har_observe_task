@@ -391,6 +391,7 @@ class HARTaskManager():
             prior_b = 1. # aka failures
             self.observed_data[:,0] += prior_a # allocating the initial conditions
             self.observed_data[:,1] += prior_b
+            np.savetxt(self.observationfilename,self.observed_data)
         else:
             self.observed_data = np.loadtxt(self.observationfilename)
         print self.observed_data
