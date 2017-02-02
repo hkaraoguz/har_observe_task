@@ -360,7 +360,7 @@ class HARTaskManager():
             update_ind = 0
         else:
             update_ind = 1
-            
+
         index = self.waypoints.index(self.current_waypoint)
         self.observed_data[index,update_ind] += 1
         np.savetxt(self.observationfilename,self.observed_data)
@@ -426,7 +426,7 @@ class HARTaskManager():
             self.current_sequence_of_tasks.append(atask)
 
         atask = copy.deepcopy(self.wait_task)
-        time = time = rospy.Time.now() + rospy.Duration(secs=len(indexes)*4*60)
+        time = time = rospy.Time.now() + rospy.Duration(secs=len(indexes)*3*60)
         atask.start_after = time
         self.current_sequence_of_tasks.append(atask)
         #print self.current_sequence_of_tasks
