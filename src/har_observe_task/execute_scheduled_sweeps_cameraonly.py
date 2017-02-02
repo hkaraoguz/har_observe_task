@@ -56,7 +56,7 @@ class HARTaskManager():
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
         self.placenames =['Office612','Office621','MeetingRoom','Kitchen']
         self.goto_tasks = []
-        self.initialize_bandit(len(self.waypoints))
+
 
         ''' Prepare the root path for data storage '''
         self.datarootdir =  os.path.expanduser('~') # Get the home directory
@@ -84,6 +84,17 @@ class HARTaskManager():
         if not os.path.isfile(self.observationfilename):
             f = open(self.observationfilename, 'w')
             f.close()
+            self.initialize_bandit(len(self.waypoints),0)
+        else:
+            self.initialize_bandit(len(self.waypoints),1)
+
+        if not os.path.isfile(self.banditstatefilename):
+            f = open(self.observationfilename, 'w')
+            f.close()
+
+
+
+
 
         ''''''
 
@@ -126,7 +137,7 @@ class HARTaskManager():
     def logdata(self,success,place="",person_count=0):
         f = open(self.logfilename, 'a')
         if f:
-            if success is 1:
+            if success == 1:
                 s = "Success\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\t'+place+'\t'+str(person_count)+'\n'
             else:
                 s = "Fail\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\n'
@@ -262,9 +273,9 @@ class HARTaskManager():
         #print taskevent.event
         #print taskevent.task.task_id
         #print self.current_task_id
-        if taskevent.event > 9 and taskevent.event is not 16:
+        if taskevent.event > 9 and taskevent.event != 16:
 
-            if taskevent.task.task_id is self.current_task_id:
+            if taskevent.task.task_id == self.current_task_id:
                 rospy.logwarn("Goto task did not succeed")
                 self.should_update_model = 0
                 self.current_task_id = -1
@@ -272,8 +283,8 @@ class HARTaskManager():
                 self.current_wait_task_id=self.send_task(self.wait_task)
            # elif taskevent.task.task_id is self.current_wait_task_id:
            #     self.current_wait_task_id = self.send_task(self.wait_task)
-        if taskevent.task.task_id is self.current_task_id:
-            if taskevent.event is 16:
+        if taskevent.task.task_id == self.current_task_id:
+            if taskevent.event == 16:
                 rospy.loginfo("Task suceeded")
                 self.timer = rospy.Timer(rospy.Duration(5), self.startObservationCB,oneshot=True)
 
@@ -301,7 +312,7 @@ class HARTaskManager():
         #print date.hour,date.minute
         timeminutes = date.hour*60 + date.minute
         #print timeminutes
-        if(self.minutes[timeminutes] >= 0 and self.minutes[timeminutes] is not self.previoustasktimeslot):
+        if(self.minutes[timeminutes] >= 0 and self.minutes[timeminutes] != self.previoustasktimeslot):
             rospy.loginfo("Now it is time to do a task")
             # make sure the executive is running -- this only needs to be done once for the whole system not for every task
             set_execution_status = rospy.ServiceProxy(self.set_exe_stat_srv_name, strands_executive_msgs.srv.SetExecutionStatus)
@@ -311,8 +322,11 @@ class HARTaskManager():
         return False
 
     def check_person_overlaps(self,current_observations,previous_observations):
+        rospy.loginfo("Checking person overlaps")
         overlaps = 0
         total_obs = len(current_observations)
+        rospy.loginfo("Current observation size %d",total_obs)
+        rospy.loginfo("Previous observation size %d",len(previous_observations))
         for curobs in current_observations:
             for prevobs in previous_observations:
                 if area(curobs,prevobs) >= 0.6:
@@ -328,7 +342,7 @@ class HARTaskManager():
     def update_observations(self,observed_data,person_count):
         state = 0
         if  person_count >= 2:
-            if self.previous_task_num is self.current_task_num:
+            if self.previous_task_num == self.current_task_num:
                 if(self.check_person_overlaps(self.current_person_locations,self.previous_person_locations)):
                     update_ind = 1
                     state=2
@@ -365,13 +379,16 @@ class HARTaskManager():
         UCB = estimated_means + np.sqrt( np.minimum( estimated_variances + np.sqrt(2*np.log(t)/totals), 0.25 ) * np.log(t)/totals )
         return np.argmax(UCB)
 
-    def initialize_bandit(self,num_classes):
-
-        prior_a = 1. # aka successes
-        prior_b = 1. # aka failures
+    def initialize_bandit(self,num_classes,read_from_data):
         self.observed_data = np.zeros((num_classes,2))
-        self.observed_data[:,0] += prior_a # allocating the initial conditions
-        self.observed_data[:,1] += prior_b
+        if read_from_data == 0:
+            prior_a = 1. # aka successes
+            prior_b = 1. # aka failures
+            self.observed_data[:,0] += prior_a # allocating the initial conditions
+            self.observed_data[:,1] += prior_b
+        else:
+            self.observed_data = np.loadtxt(self.observationfilename)
+        print self.observed_data
         #regret = np.zeros(num_samples)
         #print observed_data
 
