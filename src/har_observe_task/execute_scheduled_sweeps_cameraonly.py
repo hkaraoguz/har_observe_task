@@ -417,14 +417,13 @@ class HARTaskManager():
         print indexes
         for i,index in enumerate(indexes):
             atask = copy.deepcopy(self.goto_tasks[index])
-            time = rospy.Time.now()
-            time.secs = time.secs + i*4*60
+            time = rospy.Time.now() + rospy.Duration(secs=i*4*60)
+            #time.secs = time.secs + i*4*60
             atask.start_after = time
             self.current_sequence_of_tasks.append(atask)
 
         atask = copy.deepcopy(self.wait_task)
-        time = rospy.Time.now()
-        time.secs = time.secs + len(indexes)*4*60
+        time = time = rospy.Time.now() + rospy.Duration(secs=len(indexes)*4*60)
         atask.start_after = time
         self.current_sequence_of_tasks.append(atask)
         #print self.current_sequence_of_tasks
