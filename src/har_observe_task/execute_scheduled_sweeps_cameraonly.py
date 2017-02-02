@@ -290,9 +290,9 @@ class HARTaskManager():
         for i in arange:
             for k in range (0,numtimeslot):
                 for j in range(-2,2):
-                #print int((i+8)*60)+j
-                self.minutes[int((i+8)*60)+ k*interval+j] = count
-            count+=1
+                    #print int((i+8)*60)+j
+                    self.minutes[int((i+8)*60)+ k*interval+j] = count
+                count+=1
 
     def check_timeslot(self):
         currentTime = rospy.Time.now().secs
