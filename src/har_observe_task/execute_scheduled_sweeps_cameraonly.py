@@ -486,7 +486,7 @@ if __name__ =="__main__":
 
     while not rospy.is_shutdown():
         if hartask_manager.check_timeslot():
-
+            hartask_manager.current_sequence_of_tasks = []
             hartask_manager.create_sequence_of_tasks()
             hartask_manager.send_tasks(hartask_manager.current_sequence_of_tasks)
 
