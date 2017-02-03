@@ -4,6 +4,8 @@ from strands_executive_msgs.msg import Task, TaskEvent
 import strands_executive_msgs
 from strands_executive_msgs.srv import AddTasks, AddTask, GetActiveTasks
 from strands_navigation_msgs.srv import LocalisePose
+from deep_object_detection.msg import Object
+from deep_object_detection.srv import DetectObjects, DetectObjectsRequest
 from find_waypoints import *
 from create_tasks import *
 import rospy
@@ -11,8 +13,7 @@ import sys
 from datetime import datetime
 import numpy as np
 from random import randint
-from deep_object_detection.msg import Object
-from deep_object_detection.srv import DetectObjects, DetectObjectsRequest
+
 from semantic_map.msg import RoomObservation
 from sensor_msgs.msg import Image
 import cv2
@@ -56,6 +57,9 @@ class HARTaskManager():
         self.person_count  = 0
         self.timer = None
         self.rosbag = None
+
+
+        ''' Create the WayPoint and place names '''
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
         self.current_waypoint = ""
         self.placenames = dict()
@@ -63,16 +67,19 @@ class HARTaskManager():
         self.placenames[self.waypoints[1]] = "Office621"
         self.placenames[self.waypoints[2]] = "MeetingRoom"
         self.placenames[self.waypoints[3]] = "Kitchen"
-        self.create_timeslot_array()
-        #self.placenames =['Office612','Office621','MeetingRoom','Kitchen']
 
         self.goto_tasks = []
         for waypoint in self.waypoints:
             self.goto_tasks.append(create_go_to_waypoint_task(waypoint))
 
+        ''''''
+
         ''' Create the charging task '''
         self.wait_task = create_wait_action_task("ChargingPoint")
         ''''''
+
+        '''Create the timeslots for the day (9-18)'''
+        self.create_timeslot_array()
 
 
         ''' Prepare the root path for data storage '''
@@ -84,7 +91,6 @@ class HARTaskManager():
 
         self.initializeLoggingFiles()
 
-        self.create_sequence_of_tasks()
         ''''''
 
         ''' Services and message subscriptions '''
@@ -95,10 +101,6 @@ class HARTaskManager():
 
         sub = rospy.Subscriber("task_executor/events",TaskEvent,self.taskexecutorCB)
         ''''''
-
-
-        # wait at Charging Point middle of the corridor
-        #self.wait_task = create_wait_action_task()
 
         ''' Check For Services '''
         try:
@@ -112,6 +114,7 @@ class HARTaskManager():
             rospy.logerr("Service not available!!")
             sys.exit(-1)
         ''''''
+
     def initializeLoggingFiles(self):
 
         self.logfilename = copy.deepcopy(self.datarootdir)
@@ -164,11 +167,11 @@ class HARTaskManager():
        else:
            rospy.logerr("Bandit state Log file could not be opened")
 
-
+    ''' This is the callback when the observation of the room is finished '''
     def timerCB(self,event):
         rospy.loginfo("Timer callback")
-
         self.observation_sub.unregister()
+
         self.logdata(success=1,place=self.placenames[self.current_waypoint],person_count=self.person_count)
 
         self.update_observations(self.observed_data,self.person_count)
@@ -179,9 +182,15 @@ class HARTaskManager():
         self.person_count = 0
         self.current_waypoint=""
 
+    ''' This is called when a new frame from the camera is received '''
     def observationCB(self, msg):
         #self.sweep_detections.append(self.latest_detections)
+
         self.images.append(msg)
+
+        if self.rosbag:
+            rospy.loginfo("Writing into rosbag")
+            self.rosbag.write('/head_xtion/rgb/image_rect_color',msg,rospy.Time.now())
         try:
             rospy.wait_for_service('/deep_object_detection/detect_objects',timeout=10)
         except:
@@ -200,9 +209,7 @@ class HARTaskManager():
             print "Service call failed: %s"%e
             return
 
-        if self.rosbag:
-            rospy.loginfo("Writing into rosbag")
-            self.rosbag.write('/head_xtion/rgb/image_rect_color',msg,rospy.Time.now())
+
 
         person_objs = []
         self.images = []
@@ -244,25 +251,6 @@ class HARTaskManager():
             #self.current_wait_task_id=self.send_task(self.wait_task)
 
 
-    def finishedCB(self, msg):
-
-        sweep_dir = path.abspath(path.join(path.abspath(msg.xml_file_name), path.pardir))
-
-        req = DetectObjectRequest()
-        req.images = self.images
-
-        try:
-            rospy.wait_for_service('/deep_object_detection/detect_objects',timeout=10)
-        except:
-            rospy.logerr("No deep_object detection service")
-            return
-
-        try:
-            rospy.wait_for_service('/topological_localisation/localise_pose',timeout=10)
-        except:
-            rospy.logerr("No topological localization service")
-            return
-
     def startObservationCB(self,event):
         rospy.loginfo("Start Observation callback")
 
@@ -286,7 +274,6 @@ class HARTaskManager():
         if taskevent.event > 9 and taskevent.event != 16:
 
             if taskevent.task.task_id in self.task_ids:
-
                 rospy.logwarn("Goto task did not succeed")
                 self.logdata(success=0)
                 srv = rospy.ServiceProxy("/task_executor/get_active_tasks", GetActiveTasks)
@@ -334,23 +321,6 @@ class HARTaskManager():
             set_execution_status(True)
             self.previoustasktimeslot = self.minutes[timeminutes]
             return True
-        return False
-
-    def check_person_overlaps(self,current_observations,previous_observations):
-        rospy.loginfo("Checking person overlaps")
-        overlaps = 0
-        total_obs = len(current_observations)
-        rospy.loginfo("Current observation size %d",total_obs)
-        rospy.loginfo("Previous observation size %d",len(previous_observations))
-        for curobs in current_observations:
-            for prevobs in previous_observations:
-                if area(curobs,prevobs) >= 0.6:
-                    overlaps += 1
-                    break
-        rospy.loginfo("Overlaps %d, current observations %d",overlaps, len(current_observations))
-        if float(overlaps)/total_obs > 0.5:
-            return True
-
         return False
 
 
