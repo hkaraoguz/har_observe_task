@@ -311,7 +311,7 @@ class HARTaskManager():
         self.minutes = [-1]*1440
         count = 0
         arange = np.arange(1,10,1)
-        interval = 15
+        interval = 20
         numtimeslot = 60/interval
         #print arange
         for i in arange:
@@ -398,9 +398,9 @@ class HARTaskManager():
         f.write(st)
         f.close()
 
-        probs = probs[::-1]
+        #probs = probs[::-1]
         indexes = probs.argsort()
-        #indexes = indexes[::-1]
+        indexes = indexes[::-1]
         print indexes
         for i,index in enumerate(indexes):
             atask = copy.deepcopy(self.goto_tasks[index])
