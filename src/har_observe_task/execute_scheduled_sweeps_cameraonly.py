@@ -175,7 +175,7 @@ class HARTaskManager():
     def create_timeslot_array(self):
         self.minutes = [-1]*1440
         count = 0
-        arange = np.arange(1,10,1)
+        arange = np.arange(1,11,1)
         interval = 20
         numtimeslot = 60/interval
         #print arange
