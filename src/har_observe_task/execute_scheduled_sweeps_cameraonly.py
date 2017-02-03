@@ -44,16 +44,15 @@ class HARTaskManager():
         self.current_person_locations = []
 
         self.current_sequence_of_tasks = []
-        self.current_task_index = 0
 
-        self.current_task_id = -1
+        self.runcount = -1
 
         self.current_task_num = -1
 
         self.current_wait_task_id = -1
 
         self.previoustasktimeslot = -1
-        self.should_update_model = 0
+
         self.person_count  = 0
         self.timer = None
         self.rosbag = None
@@ -97,7 +96,7 @@ class HARTaskManager():
         self.add_task_srv_name = '/task_executor/add_task'
         self.add_tasks_srv_name = '/task_executor/add_tasks'
         self.set_exe_stat_srv_name = '/task_executor/set_execution_status'
-        self.finished_sub = rospy.Subscriber('/local_metric_map/room_observations', RoomObservation, callback=self.finishedCB)
+        #self.finished_sub = rospy.Subscriber('/local_metric_map/room_observations', RoomObservation, callback=self.finishedCB)
 
         sub = rospy.Subscriber("task_executor/events",TaskEvent,self.taskexecutorCB)
         ''''''
@@ -112,6 +111,12 @@ class HARTaskManager():
             rospy.wait_for_service(self.set_exe_stat_srv_name,timeout=10)
         except:
             rospy.logerr("Service not available!!")
+
+
+        try:
+            rospy.wait_for_service('/deep_object_detection/detect_objects',timeout=10)
+        except:
+            rospy.logerr("No deep_object detection service")
             sys.exit(-1)
         ''''''
 
@@ -129,6 +134,10 @@ class HARTaskManager():
         self.probabilitiesfilename += datetime.now().strftime('%Y-%m-%d_probabilities')
         self.probabilitiesfilename += ".txt"
 
+        self.runcountfilename= copy.deepcopy(self.datarootdir)
+        self.runcountfilename += datetime.now().strftime('%Y-%m-%d_runcount')
+        self.runcountfilename += ".txt"
+
         if not os.path.isfile(self.logfilename):
             f = open(self.logfilename, 'w')
             f.close()
@@ -144,14 +153,24 @@ class HARTaskManager():
             f = open(self.probabilitiesfilename, 'w')
             f.close()
 
+        if not os.path.isfile(self.runcountfilename):
+            f = open(self.runcountfilename, 'w')
+            f.write("-1")
+            f.close()
+        else:
+            f = open(self.runcountfilename, 'r')
+            st = f.read()
+            self.runcount = int(st)
+
+
 
     def logdata(self,success,place="",person_count=0):
         f = open(self.logfilename, 'a')
         if f:
             if success == 1:
-                s = "Success\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\t'+place+'\t'+str(person_count)+'\n'
+                s = "Success\t"+str(self.runcount)+"\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\t'+place+'\t'+str(person_count)+'\n'
             else:
-                s = "Fail\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\n'
+                s = "Fail\t"+str(self.runcount)+"\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\n'
             f.write(s)
             f.close()
         else:
@@ -186,18 +205,13 @@ class HARTaskManager():
     def observationCB(self, msg):
         #self.sweep_detections.append(self.latest_detections)
 
-        self.images.append(msg)
-
         if self.rosbag:
             rospy.loginfo("Writing into rosbag")
             self.rosbag.write('/head_xtion/rgb/image_rect_color',msg,rospy.Time.now())
-        try:
-            rospy.wait_for_service('/deep_object_detection/detect_objects',timeout=10)
-        except:
-            self.images=[]
-            self.observation_sub.unregister()
-            rospy.logerr("No deep_object detection service")
-            return
+            if self.person_count >= 2:
+                return
+
+        self.images.append(msg)
         try:
             server = rospy.ServiceProxy('/deep_object_detection/detect_objects', DetectObjects)
             req = DetectObjectsRequest()
@@ -206,10 +220,9 @@ class HARTaskManager():
             resp = server(req)
         except rospy.ServiceException, e:
             self.images=[]
+            self.observation_sub.unregister()
             print "Service call failed: %s"%e
             return
-
-
 
         person_objs = []
         self.images = []
@@ -255,13 +268,13 @@ class HARTaskManager():
         rospy.loginfo("Start Observation callback")
 
         filename = copy.deepcopy(self.datarootdir)
-        filename += datetime.now().strftime('%Y-%m-%d_%H:%M')
+        filename += str(self.runcount)+"_"+self.placenames[self.current_waypoint]#datetime.now().strftime('%Y-%m-%d_%H:%M')
         filename += ".bag"
         rospy.loginfo("Rosbag path: %s",filename)
         self.rosbag = rosbag.Bag(filename, 'w')
         self.person_count = 0
         self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
-        self.timer = rospy.Timer(rospy.Duration(25), self.timerCB,oneshot=True)
+        self.timer = rospy.Timer(rospy.Duration(20), self.timerCB,oneshot=True)
 
             #sys.exit(-1)
     def taskexecutorCB(self,taskevent):
@@ -459,6 +472,10 @@ if __name__ =="__main__":
 
     while not rospy.is_shutdown():
         if hartask_manager.check_timeslot():
+            hartask_manager.runcount +=1
+            f = open(hartask_manager.runcountfilename, 'w')
+            f.write(str(hartask_manager.runcount))
+            f.close()
             hartask_manager.current_sequence_of_tasks = []
             hartask_manager.create_sequence_of_tasks()
             hartask_manager.send_tasks(hartask_manager.current_sequence_of_tasks)
