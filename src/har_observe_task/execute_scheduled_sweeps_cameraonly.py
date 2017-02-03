@@ -242,8 +242,8 @@ class HARTaskManager():
             #    self.timer =None
 
             rospy.loginfo("Human observation suceeded")
-            self.logdata(success=1,place=self.placenames[self.current_waypoint],person_count=self.person_count)
-            self.update_observations(self.observed_data,self.person_count)
+            #self.logdata(success=1,place=self.placenames[self.current_waypoint],person_count=self.person_count)
+            #self.update_observations(self.observed_data,self.person_count)
             #self.rosbag.close()
             #self.rosbag = None
             bridge = CvBridge()
