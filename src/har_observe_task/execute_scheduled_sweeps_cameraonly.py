@@ -236,16 +236,16 @@ class HARTaskManager():
 
         if self.person_count >= 2:
 
-            self.observation_sub.unregister()
-            if self.timer:
-                self.timer.shutdown()
-                self.timer =None
+            #self.observation_sub.unregister()
+            #if self.timer:
+            #    self.timer.shutdown()
+            #    self.timer =None
 
             rospy.loginfo("Human observation suceeded")
             self.logdata(success=1,place=self.placenames[self.current_waypoint],person_count=self.person_count)
             self.update_observations(self.observed_data,self.person_count)
-            self.rosbag.close()
-            self.rosbag = None
+            #self.rosbag.close()
+            #self.rosbag = None
             bridge = CvBridge()
             cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
@@ -259,7 +259,7 @@ class HARTaskManager():
             filename += ".jpg"
             cv2.imwrite(filename,cv_image)
             self.images = []
-            self.current_waypoint = ""
+            #self.current_waypoint = ""
 
             #self.current_wait_task_id=self.send_task(self.wait_task)
 
@@ -310,7 +310,7 @@ class HARTaskManager():
         self.minutes = [-1]*1440
         count = 0
         arange = np.arange(1,10,1)
-        interval = 20
+        interval = 15
         numtimeslot = 60/interval
         #print arange
         for i in arange:

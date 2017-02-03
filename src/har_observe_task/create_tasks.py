@@ -36,7 +36,7 @@ def create_har_observation_tasks(duration=rospy.Duration(30*60)):
     return tasks
 
 def create_wait_action_task(waypoint):
-    task = Task(action='wait_action', max_duration=rospy.Duration(2*60), start_node_id=waypoint)
+    task = Task(action='wait_action', max_duration=rospy.Duration(1*60), start_node_id=waypoint)
     return task
 
 def create_go_to_waypoint_task(waypoint):
