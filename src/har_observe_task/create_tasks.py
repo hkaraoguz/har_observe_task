@@ -35,6 +35,15 @@ def create_har_observation_tasks(duration=rospy.Duration(30*60)):
 
     return tasks
 
+def create_harroom_observation_task(waypoint,runcount,placename,duration=rospy.Duration(3*60)):
+
+    task = Task(start_node_id=waypoint, end_node_id=waypoint, action='observe_harroom', max_duration=duration)
+    task_utils.add_int_argument(task, runcount)
+    task_utils.add_string_argument(task,placename)
+
+    return task
+
+
 def create_wait_action_task(waypoint):
     task = Task(action='wait_action', max_duration=rospy.Duration(1*60), start_node_id=waypoint)
     return task

@@ -50,6 +50,8 @@ class HARTaskManager():
         self.datarootdir +="/harscheduling/"
 
 
+
+
         ''' Create the WayPoint and place names '''
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
         self.current_waypoint = ""
@@ -59,9 +61,10 @@ class HARTaskManager():
         self.placenames[self.waypoints[2]] = "MeetingRoom"
         self.placenames[self.waypoints[3]] = "Kitchen"
 
+        self.initializeLogFiles()
         self.goto_tasks = []
         for waypoint in self.waypoints:
-            self.goto_tasks.append(create_go_to_waypoint_task(waypoint))
+            self.goto_tasks.append(create_harroom_observation_task(waypoint,self.runcount,self.placenames[waypoint]))
 
         ''''''
 

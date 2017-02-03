@@ -94,7 +94,7 @@ class ObserveHARRoomActionServer(object):
             self._as.publish_feedback(self._feedback)
             print "Sleeping..."
             now = rospy.Time().now()
-            if now - start > rospy.Duration(60.0*0.5) or self.cancelled:
+            if now - start > rospy.Duration(20) or self.cancelled:
                 print "Damn, now I got cancelled in the loop"
                 if self.rosbag:
                     self.rosbag.close()
