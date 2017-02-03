@@ -290,7 +290,7 @@ class HARTaskManager():
                 rospy.logwarn("Goto task did not succeed")
                 self.logdata(success=0)
                 srv = rospy.ServiceProxy("/task_executor/get_active_tasks", GetActiveTasks)
-                tasks = srv()
+                tasks = srv().task
                 if len(tasks) == 0:
                     self.current_wait_task_id=self.send_task(self.wait_task)
 
