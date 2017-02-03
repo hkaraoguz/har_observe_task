@@ -288,7 +288,8 @@ class HARTaskManager():
 
             if taskevent.task.task_id in self.task_ids:
                 rospy.logwarn("Goto task did not succeed")
-                self.logdata(success=0)
+                if taskevent.task.start_node_id != "ChargingPoint":
+                    self.logdata(success=0)
                 srv = rospy.ServiceProxy("/task_executor/get_active_tasks", GetActiveTasks)
                 tasks = srv().task
                 if len(tasks) == 0:
@@ -399,7 +400,7 @@ class HARTaskManager():
 
         probs = probs[::-1]
         indexes = probs.argsort()
-        indexes = indexes[::-1]
+        #indexes = indexes[::-1]
         print indexes
         for i,index in enumerate(indexes):
             atask = copy.deepcopy(self.goto_tasks[index])
