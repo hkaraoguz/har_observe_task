@@ -101,28 +101,28 @@ class ObserveHARRoomActionServer(object):
                 break
 
         self._result.success = False
+        if self.rosbag:
+           self.rosbag.close()
         if not self.cancelled:
-            if self.rosbag:
-                self.rosbag.close()
-
-            self.logdata(success=1,place=self.placename,person_count=self.person_count)
+           
+            self.logdata(success=1,place=self.placename,person_count=self.personcount)
 
             if self.personcount >=2:
                 self._result.success = True
-
+	    self._as.set_succeeded(self._result)
         else:
             if self.rosbag:
                 self.rosbag.close()
             self.logdata(success=0)
-        self._as.set_succeeded(self._result)
+        #self._as.set_succeeded(self._result)
 
 
 
     def preemptCallback(self):
         print "Damn, now I got cancelled in the callback"
-        if self.rosbag:
-            self.rosbag.close()
-        self.logdata(success=0)
+        #if self.rosbag:
+        #    self.rosbag.close()
+        #self.logdata(success=0)
         self.cancelled = True
         self._result.success = False
         self._as.set_preempted(self._result)
