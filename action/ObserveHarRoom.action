@@ -1,0 +1,9 @@
+#goal definition
+uint16 runcount
+string placename
+---
+#result definition
+bool success #Returns true when the time 'seconds' is up.
+---
+#feedback
+uint16 personcount #Number of people observed

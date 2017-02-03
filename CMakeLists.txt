@@ -56,6 +56,7 @@ catkin_python_setup()
 add_action_files(
     DIRECTORY action
     FILES ObserveHar.action
+    ObserveHarRoom.action
 )
 
 ## Generate services in the 'srv' folder

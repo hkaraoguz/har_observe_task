@@ -4,8 +4,7 @@ from strands_executive_msgs.msg import Task, TaskEvent
 import strands_executive_msgs
 from strands_executive_msgs.srv import AddTasks, AddTask, GetActiveTasks
 from strands_navigation_msgs.srv import LocalisePose
-from deep_object_detection.msg import Object
-from deep_object_detection.srv import DetectObjects, DetectObjectsRequest
+
 from find_waypoints import *
 from create_tasks import *
 import rospy
@@ -13,23 +12,12 @@ import sys
 from datetime import datetime
 import numpy as np
 from random import randint
-
 from semantic_map.msg import RoomObservation
-from sensor_msgs.msg import Image
-import cv2
-from cv_bridge import CvBridge
+
+
 import rosbag
 import copy
 import os
-from collections import namedtuple
-Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
-
-def area(a, b):  # returns None if rectangles don't intersect
-    dx = min(a.xmax, b.xmax) - max(a.xmin, b.xmin)
-    dy = min(a.ymax, b.ymax) - max(a.ymin, b.ymin)
-    if (dx>=0) and (dy>=0):
-        return dx*dy
-    return 0
 
 class HARTaskManager():
 
@@ -57,6 +45,10 @@ class HARTaskManager():
         self.timer = None
         self.rosbag = None
 
+        ''' Prepare the root path for data storage '''
+        self.datarootdir =  os.path.expanduser('~') # Get the home directory
+        self.datarootdir +="/harscheduling/"
+
 
         ''' Create the WayPoint and place names '''
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
@@ -79,17 +71,6 @@ class HARTaskManager():
 
         '''Create the timeslots for the day (9-18)'''
         self.create_timeslot_array()
-
-
-        ''' Prepare the root path for data storage '''
-        self.datarootdir =  os.path.expanduser('~') # Get the home directory
-        self.datarootdir +="/harscheduling/"
-
-        if not os.path.exists(self.datarootdir):
-            os.makedirs(self.datarootdir)
-
-        self.initializeLoggingFiles()
-
         ''''''
 
         ''' Services and message subscriptions '''
@@ -120,11 +101,10 @@ class HARTaskManager():
             sys.exit(-1)
         ''''''
 
-    def initializeLoggingFiles(self):
+        #self.current_wait_task_id=self.send_task(self.wait_task)
+        self.current_waypoint=""
 
-        self.logfilename = copy.deepcopy(self.datarootdir)
-        self.logfilename += datetime.now().strftime('%Y-%m-%d')
-        self.logfilename += ".txt"
+    def initializeLogFiles(self):
 
         self.observationfilename = copy.deepcopy(self.datarootdir)
         self.observationfilename += datetime.now().strftime('%Y-%m-%d_observations')
@@ -137,10 +117,6 @@ class HARTaskManager():
         self.runcountfilename= copy.deepcopy(self.datarootdir)
         self.runcountfilename += datetime.now().strftime('%Y-%m-%d_runcount')
         self.runcountfilename += ".txt"
-
-        if not os.path.isfile(self.logfilename):
-            f = open(self.logfilename, 'w')
-            f.close()
 
         if not os.path.isfile(self.observationfilename):
             f = open(self.observationfilename, 'w')
@@ -163,119 +139,6 @@ class HARTaskManager():
             self.runcount = int(st)
 
 
-
-    def logdata(self,success,place="",person_count=0):
-        f = open(self.logfilename, 'a')
-        if f:
-            if success == 1:
-                s = "Success\t"+str(self.runcount)+"\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\t'+place+'\t'+str(person_count)+'\n'
-            else:
-                s = "Fail\t"+str(self.runcount)+"\t"+datetime.now().strftime('%Y-%m-%d_%H:%M')+'\n'
-            f.write(s)
-            f.close()
-        else:
-            rospy.logerr("Log file could not be opened")
-
-    def logbanditstate(self,state):
-       f = open(self.banditstatefilename, 'a')
-       if f:
-           s = datetime.now().strftime('%Y-%m-%d_%H:%M')+"\t"+str(state)+"\n"
-           f.write(s)
-           f.close()
-
-       else:
-           rospy.logerr("Bandit state Log file could not be opened")
-
-    ''' This is the callback when the observation of the room is finished '''
-    def timerCB(self,event):
-        rospy.loginfo("Timer callback")
-        self.observation_sub.unregister()
-
-        self.logdata(success=1,place=self.placenames[self.current_waypoint],person_count=self.person_count)
-
-        self.update_observations(self.observed_data,self.person_count)
-
-        #self.current_wait_task_id=self.send_task(self.wait_task)
-        self.rosbag.close()
-        self.rosbag = None
-        self.person_count = 0
-        self.current_waypoint=""
-
-    ''' This is called when a new frame from the camera is received '''
-    def observationCB(self, msg):
-        #self.sweep_detections.append(self.latest_detections)
-
-        if self.rosbag:
-            rospy.loginfo("Writing into rosbag")
-            self.rosbag.write('/head_xtion/rgb/image_rect_color',msg,rospy.Time.now())
-            if self.person_count >= 2:
-                return
-
-        self.images.append(msg)
-        try:
-            server = rospy.ServiceProxy('/deep_object_detection/detect_objects', DetectObjects)
-            req = DetectObjectsRequest()
-            req.images=self.images
-            req.confidence_threshold=0.85
-            resp = server(req)
-        except rospy.ServiceException, e:
-            self.images=[]
-            self.observation_sub.unregister()
-            print "Service call failed: %s"%e
-            return
-
-        person_objs = []
-        self.images = []
-
-        for obj in resp.objects:
-            if obj.label == "person" and obj.width*obj.height > 4096:
-                self.person_count +=1
-                aRect = Rectangle(obj.x-obj.width/2,obj.x+obj.width/2,obj.y-obj.height/2,obj.y+obj.height/2)
-                self.current_person_locations.append(aRect)
-                person_objs.append(obj)
-
-        if self.person_count >= 2:
-
-            #self.observation_sub.unregister()
-            #if self.timer:
-            #    self.timer.shutdown()
-            #    self.timer =None
-
-            rospy.loginfo("Human observation suceeded")
-            #self.logdata(success=1,place=self.placenames[self.current_waypoint],person_count=self.person_count)
-            #self.update_observations(self.observed_data,self.person_count)
-            #self.rosbag.close()
-            #self.rosbag = None
-            bridge = CvBridge()
-            cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-
-            for person_obj in person_objs:
-                cv2.rectangle(cv_image,(person_obj.x,person_obj.y),(person_obj.x+person_obj.width, person_obj.y+person_obj.height),color=(255,255,0),thickness=2)
-                text = "%.2f"%person_obj.confidence
-                cv2.putText(cv_image,text,(person_obj.x+person_obj.width/4,person_obj.y+person_obj.height/2),cv2.FONT_HERSHEY_SIMPLEX,0.7,color=(255,0,255),thickness=2)
-
-            filename = copy.deepcopy(self.datarootdir)
-            filename += datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-            filename += ".jpg"
-            cv2.imwrite(filename,cv_image)
-            self.images = []
-            #self.current_waypoint = ""
-
-            #self.current_wait_task_id=self.send_task(self.wait_task)
-
-
-    def startObservationCB(self,event):
-        rospy.loginfo("Start Observation callback")
-
-        filename = copy.deepcopy(self.datarootdir)
-        filename += str(self.runcount)+"_"+self.placenames[self.current_waypoint]#datetime.now().strftime('%Y-%m-%d_%H:%M')
-        filename += ".bag"
-        rospy.loginfo("Rosbag path: %s",filename)
-        self.rosbag = rosbag.Bag(filename, 'w')
-        self.person_count = 0
-        self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
-        self.timer = rospy.Timer(rospy.Duration(20), self.timerCB,oneshot=True)
-
             #sys.exit(-1)
     def taskexecutorCB(self,taskevent):
         #task is not succeeded
@@ -288,8 +151,6 @@ class HARTaskManager():
 
             if taskevent.task.task_id in self.task_ids:
                 rospy.logwarn("Goto task did not succeed")
-                if taskevent.task.start_node_id != "ChargingPoint":
-                    self.logdata(success=0)
                 srv = rospy.ServiceProxy("/task_executor/get_active_tasks", GetActiveTasks)
                 tasks = srv().task
                 if len(tasks) == 0:
@@ -304,7 +165,8 @@ class HARTaskManager():
                 rospy.loginfo("Task succeeded")
                 if taskevent.task.start_node_id != "ChargingPoint":
                     self.current_waypoint = taskevent.task.start_node_id
-                    self.timer = rospy.Timer(rospy.Duration(5), self.startObservationCB,oneshot=True)
+                    self.update_observations(self.observed_data,self.person_count)
+                    #self.timer = rospy.Timer(rospy.Duration(5), self.startObservationCB,oneshot=True)
 
 
     def create_timeslot_array(self):
