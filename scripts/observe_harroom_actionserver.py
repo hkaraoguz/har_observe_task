@@ -48,7 +48,7 @@ class ObserveHARRoomActionServer(object):
         self._as.start()
         rospy.loginfo(" ...done")
 
-        self.result_pub = rospy.Publisher("/observe_harroom/observation_result",String)
+        self.result_pub = rospy.Publisher("/observe_harroom/observation_result",String,queue_size=5)
         #Publishers
         #self.empty_pub = rospy.Publisher("/direct_ptu_at_origin", Empty)
         #self.pose_pub = rospy.Publisher("/direct_ptu_at_point", Pose)
