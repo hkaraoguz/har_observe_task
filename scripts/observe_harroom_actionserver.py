@@ -96,7 +96,7 @@ class ObserveHARRoomActionServer(object):
             #print "Sleeping..."
             now = rospy.Time().now()
             if now - start > rospy.Duration(20) or self.cancelled:
-                rospy.loginfo("Time is up of got cancelled")
+                rospy.loginfo("Time is up or got cancelled")
                 self.observation_sub.unregister()
                 break
 
