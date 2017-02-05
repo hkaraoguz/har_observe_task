@@ -207,8 +207,9 @@ class HARTaskManager():
 
     def updateObservationsCB(self,msg):
         res = json.loads(msg.data)
-        print res.keys()
-        print res
+        #print res.keys()
+        print res[0]
+        print res[1]
 
 
     def update_observations(self,observed_data,person_count):
