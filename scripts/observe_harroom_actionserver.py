@@ -15,6 +15,8 @@ import os
 import cv2
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
+import json
 
 class ObserveHARRoomActionServer(object):
     # Create feedback and result messages
@@ -46,6 +48,7 @@ class ObserveHARRoomActionServer(object):
         self._as.start()
         rospy.loginfo(" ...done")
 
+        self.result_pub = rospy.Publisher("/observe_harroom/observation_result",String)
         #Publishers
         #self.empty_pub = rospy.Publisher("/direct_ptu_at_origin", Empty)
         #self.pose_pub = rospy.Publisher("/direct_ptu_at_point", Pose)
@@ -98,6 +101,8 @@ class ObserveHARRoomActionServer(object):
             if now - start > rospy.Duration(20) or self.cancelled:
                 rospy.loginfo("Time is up or got cancelled")
                 self.observation_sub.unregister()
+                res = json.dumps([self.placename,self.personcount])
+                self.result_pub.publish(res)
                 break
 
         self._result.success = False

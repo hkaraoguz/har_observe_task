@@ -18,6 +18,7 @@ from semantic_map.msg import RoomObservation
 import rosbag
 import copy
 import os
+import json
 
 class HARTaskManager():
 
@@ -60,6 +61,8 @@ class HARTaskManager():
         self.placenames[self.waypoints[1]] = "Office621"
         self.placenames[self.waypoints[2]] = "MeetingRoom"
         self.placenames[self.waypoints[3]] = "Kitchen"
+
+        self.observation_sub = rospy.Subscriber("observe_harroom/observation_result",String,self.updateObservationsCB)
 
         self.initializeLogFiles()
         self.goto_tasks = []
@@ -201,6 +204,11 @@ class HARTaskManager():
             self.previoustasktimeslot = self.minutes[timeminutes]
             return True
         return False
+
+    def updateObservationsCB(self,result):
+        res = json.loads(result)
+        print res.keys()
+        print res
 
 
     def update_observations(self,observed_data,person_count):
