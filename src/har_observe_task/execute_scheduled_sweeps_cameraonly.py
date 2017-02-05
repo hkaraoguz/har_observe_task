@@ -63,8 +63,8 @@ class HARTaskManager():
 
         self.initializeLogFiles()
         self.goto_tasks = []
-        for waypoint in self.waypoints:
-            self.goto_tasks.append(create_harroom_observation_task(waypoint,self.runcount,self.placenames[waypoint]))
+        #for waypoint in self.waypoints:
+        #    self.goto_tasks.append(create_harroom_observation_task(waypoint,self.runcount,self.placenames[waypoint]))
 
         ''''''
 
