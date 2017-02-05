@@ -205,8 +205,8 @@ class HARTaskManager():
             return True
         return False
 
-    def updateObservationsCB(self,result):
-        res = json.loads(result)
+    def updateObservationsCB(self,msg):
+        res = json.loads(msg.data)
         print res.keys()
         print res
 
