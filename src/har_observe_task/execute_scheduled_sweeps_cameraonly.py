@@ -13,7 +13,7 @@ from datetime import datetime
 import numpy as np
 from random import randint
 from semantic_map.msg import RoomObservation
-
+from std_msgs.msg import String
 
 import rosbag
 import copy
