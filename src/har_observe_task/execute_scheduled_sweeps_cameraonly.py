@@ -151,9 +151,9 @@ class HARTaskManager():
         #print taskevent.task
         #print self.current_sequence_of_tasks
         if taskevent.event > 9 and taskevent.event != 16:
-            print taskevent.event
+            #print taskevent.event
             if taskevent.task.task_id in self.task_ids:
-                rospy.logwarn("Goto task did not succeed")
+                rospy.logwarn("Goto task did not succeed with if %d with event %d",taskevent.task.task_id,taskevent.event)
                 srv = rospy.ServiceProxy("/task_executor/get_active_tasks", GetActiveTasks)
                 tasks = srv().task
                 if len(tasks) == 0:
@@ -263,11 +263,16 @@ class HARTaskManager():
         f.write(st)
         f.close()
 
+        self.goto_tasks = []
+        for waypoint in self.waypoints:
+            self.goto_tasks.append(create_harroom_observation_task(waypoint,self.runcount,self.placenames[waypoint]))
+
         #probs = probs[::-1]
         indexes = probs.argsort()
         indexes = indexes[::-1]
         print indexes
         for i,index in enumerate(indexes):
+
             atask = copy.deepcopy(self.goto_tasks[index])
             time = rospy.Time.now() + rospy.Duration(secs=i*3*60)
             #time.secs = time.secs + i*4*60
