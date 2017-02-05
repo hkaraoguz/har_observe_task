@@ -84,7 +84,7 @@ class ObserveHARRoomActionServer(object):
         filename += ".bag"
         rospy.loginfo("Rosbag path: %s",filename)
         self.rosbag = rosbag.Bag(filename, 'w')
-        observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
+        self.observation_sub = rospy.Subscriber('/head_xtion/rgb/image_rect_color', Image, callback=self.observationCB)
 
         rate = rospy.Rate(10.0)
         start = rospy.Time().now()
@@ -96,6 +96,7 @@ class ObserveHARRoomActionServer(object):
             now = rospy.Time().now()
             if now - start > rospy.Duration(20) or self.cancelled:
                 print "Damn, now I got cancelled in the loop"
+                self.observation_sub.unregister()
                 if self.rosbag:
                     self.rosbag.close()
                 break
@@ -104,7 +105,7 @@ class ObserveHARRoomActionServer(object):
         if self.rosbag:
            self.rosbag.close()
         if not self.cancelled:
-           
+
             self.logdata(success=1,place=self.placename,person_count=self.personcount)
 
             if self.personcount >=2:
@@ -113,6 +114,7 @@ class ObserveHARRoomActionServer(object):
         else:
             if self.rosbag:
                 self.rosbag.close()
+                self.rosbag  = None
             self.logdata(success=0)
         #self._as.set_succeeded(self._result)
 

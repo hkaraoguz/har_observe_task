@@ -151,7 +151,7 @@ class HARTaskManager():
         #print taskevent.task
         #print self.current_sequence_of_tasks
         if taskevent.event > 9 and taskevent.event != 16:
-
+            print taskevent.event
             if taskevent.task.task_id in self.task_ids:
                 rospy.logwarn("Goto task did not succeed")
                 srv = rospy.ServiceProxy("/task_executor/get_active_tasks", GetActiveTasks)
