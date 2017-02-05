@@ -79,6 +79,7 @@ class ObserveHARRoomActionServer(object):
         self.cancelled = False
         self.placename = goal.placename
         self.runcount = goal.runcount
+        self.personcount = 0
         filename = copy.deepcopy(self.datarootdir)
         filename += str(goal.runcount)+"_"+goal.placename#datetime.now().strftime('%Y-%m-%d_%H:%M')
         filename += ".bag"
@@ -92,30 +93,27 @@ class ObserveHARRoomActionServer(object):
             rate.sleep()
             self._feedback.personcount = self.personcount
             self._as.publish_feedback(self._feedback)
-            print "Sleeping..."
+            #print "Sleeping..."
             now = rospy.Time().now()
             if now - start > rospy.Duration(20) or self.cancelled:
-                print "Damn, now I got cancelled in the loop"
+                rospy.loginfo("Time is up of got cancelled")
                 self.observation_sub.unregister()
-                if self.rosbag:
-                    self.rosbag.close()
                 break
 
         self._result.success = False
         if self.rosbag:
            self.rosbag.close()
+           self.rosbag  = None
         if not self.cancelled:
-
             self.logdata(success=1,place=self.placename,person_count=self.personcount)
-
             if self.personcount >=2:
                 self._result.success = True
-	    self._as.set_succeeded(self._result)
+            self._as.set_succeeded(self._result)
         else:
-            if self.rosbag:
-                self.rosbag.close()
-                self.rosbag  = None
-            self.logdata(success=0)
+            if self.personcount >=2:
+                self.logdata(success=1,place=self.placename,person_count=self.personcount)
+            else:
+                self.logdata(success=0)
         #self._as.set_succeeded(self._result)
 
 
@@ -125,8 +123,11 @@ class ObserveHARRoomActionServer(object):
         #if self.rosbag:
         #    self.rosbag.close()
         #self.logdata(success=0)
+        self.observation_sub.unregister()
         self.cancelled = True
         self._result.success = False
+        if self.personcount >=2:
+            self._result.success = True
         self._as.set_preempted(self._result)
 
 
