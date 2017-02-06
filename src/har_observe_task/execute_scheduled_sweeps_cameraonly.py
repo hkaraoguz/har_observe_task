@@ -212,7 +212,7 @@ class HARTaskManager():
         rospy.loginfo("The place name %s and person count %d",self.placenameslist[placeindex],personcount)
         #self.current_waypoint = self.waypoints[placeindex]
 
-        self.update_observations(index,personcount)
+        self.update_observations(placeindex,personcount)
 
 
 
