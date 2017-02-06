@@ -50,9 +50,6 @@ class HARTaskManager():
         self.datarootdir =  os.path.expanduser('~') # Get the home directory
         self.datarootdir +="/harscheduling/"
 
-
-
-
         ''' Create the WayPoint and place names '''
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
         self.placenameslist = ['Office612','Office621','MeetingRoom','Kitchen']
@@ -157,7 +154,7 @@ class HARTaskManager():
         if taskevent.event > 9 and taskevent.event != 16:
             #print taskevent.event
             if taskevent.task.task_id in self.task_ids:
-                rospy.logwarn("Goto task did not succeed with if %d with event %d",taskevent.task.task_id,taskevent.event)
+                rospy.logwarn("Goto task did not succeed with id %d and event %d",taskevent.task.task_id,taskevent.event)
                 srv = rospy.ServiceProxy("/task_executor/get_active_tasks", GetActiveTasks)
                 tasks = srv().task
                 if len(tasks) == 0:
@@ -213,20 +210,20 @@ class HARTaskManager():
         personcount = int(res[1])
         placeindex = self.placenameslist.index(res[0])
         rospy.loginfo("The place name %s and person count %d",self.placenameslist[placeindex],personcount)
-        self.current_waypoint = self.waypoints[placeindex]
+        #self.current_waypoint = self.waypoints[placeindex]
 
-        self.update_observations(self.observed_data,personcount)
+        self.update_observations(index,personcount)
 
 
 
-    def update_observations(self,observed_data,personcount):
+    def update_observations(self,index,personcount):
 
         if  personcount >= 2:
             update_ind = 0
         else:
             update_ind = 1
 
-        index = self.waypoints.index(self.current_waypoint)
+        #index = self.waypoints.index(self.current_waypoint)
         self.observed_data[index,update_ind] += 1
         np.savetxt(self.observationfilename,self.observed_data)
         #self.logbanditstate(state)
@@ -363,6 +360,7 @@ if __name__ =="__main__":
             f = open(hartask_manager.runcountfilename, 'w')
             f.write(str(hartask_manager.runcount))
             f.close()
+            print "Observed data status: ", self.observed_data
             hartask_manager.current_sequence_of_tasks = []
             hartask_manager.create_sequence_of_tasks()
             hartask_manager.send_tasks(hartask_manager.current_sequence_of_tasks)
