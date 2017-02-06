@@ -55,7 +55,7 @@ class HARTaskManager():
 
         ''' Create the WayPoint and place names '''
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
-        self.placenames = ['Office612','Office621','MeetingRoom','Kitchen']
+        self.placenameslist = ['Office612','Office621','MeetingRoom','Kitchen']
         self.current_waypoint = ""
         self.placenames = dict()
         self.placenames[self.waypoints[0]] = "Office612"
@@ -211,8 +211,8 @@ class HARTaskManager():
         #print res.keys()
 
         personcount = int(res[1])
-        placeindex = self.placenames.index(res[0])
-        rospy.loginfo("The place name %s and person count %d",self.placenames[placeindex],personcount)
+        placeindex = self.placenameslist.index(res[0])
+        rospy.loginfo("The place name %s and person count %d",self.placenameslist[placeindex],personcount)
         self.current_waypoint = self.waypoints[placeindex]
 
         self.update_observations(self.observed_data,personcount)
