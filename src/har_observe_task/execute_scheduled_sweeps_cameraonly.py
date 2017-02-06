@@ -55,6 +55,7 @@ class HARTaskManager():
 
         ''' Create the WayPoint and place names '''
         self.waypoints = ['WayPoint19','WayPoint20','WayPoint23','WayPoint10']
+        self.placenames = ['Office612','Office621','MeetingRoom','Kitchen']
         self.current_waypoint = ""
         self.placenames = dict()
         self.placenames[self.waypoints[0]] = "Office612"
@@ -171,7 +172,7 @@ class HARTaskManager():
                 rospy.loginfo("Task succeeded")
                 if taskevent.task.start_node_id != "ChargingPoint":
                     self.current_waypoint = taskevent.task.start_node_id
-                    self.update_observations(self.observed_data,self.person_count)
+                    #self.update_observations(self.observed_data,self.person_count)
                     #self.timer = rospy.Timer(rospy.Duration(5), self.startObservationCB,oneshot=True)
 
 
@@ -208,13 +209,19 @@ class HARTaskManager():
     def updateObservationsCB(self,msg):
         res = json.loads(msg.data)
         #print res.keys()
-        print res[0]
-        print res[1]
+
+        personcount = int(res[1])
+        placeindex = self.placenames.index(res[0])
+        rospy.loginfo("The place name %s and person count %d",self.placenames[placeindex],personcount)
+        self.current_waypoint = self.waypoints[placeindex]
+
+        self.update_observations(self.observed_data,personcount)
 
 
-    def update_observations(self,observed_data,person_count):
 
-        if  person_count >= 2:
+    def update_observations(self,observed_data,personcount):
+
+        if  personcount >= 2:
             update_ind = 0
         else:
             update_ind = 1
