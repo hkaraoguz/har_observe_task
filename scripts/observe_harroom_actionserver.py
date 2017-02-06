@@ -98,7 +98,7 @@ class ObserveHARRoomActionServer(object):
             self._as.publish_feedback(self._feedback)
             #print "Sleeping..."
             now = rospy.Time().now()
-            if now - start > rospy.Duration(20) or self.cancelled:
+            if now - start > rospy.Duration(10) or self.cancelled:
                 rospy.loginfo("Time is up or got cancelled")
                 self.observation_sub.unregister()
                 res = json.dumps([self.placename,self.personcount])
