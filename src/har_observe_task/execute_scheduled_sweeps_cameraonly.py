@@ -360,7 +360,7 @@ if __name__ =="__main__":
             f = open(hartask_manager.runcountfilename, 'w')
             f.write(str(hartask_manager.runcount))
             f.close()
-            print "Observed data status: ", self.observed_data
+            print "Observed data status: ", hartask_manager.observed_data
             hartask_manager.current_sequence_of_tasks = []
             hartask_manager.create_sequence_of_tasks()
             hartask_manager.send_tasks(hartask_manager.current_sequence_of_tasks)
